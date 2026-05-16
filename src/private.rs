@@ -57,6 +57,21 @@ where
     })
 }
 
+pub fn bridge_opt_ptr<F>(call: F) -> Result<Option<NonNull<c_void>>>
+where
+    F: FnOnce(*mut *mut c_void, *mut *mut c_char) -> i32,
+{
+    let mut out = ptr::null_mut();
+    let mut error = ptr::null_mut();
+
+    let status = call(&mut out, &mut error);
+    if status != ffi::status::OK {
+        return Err(from_status(status, error));
+    }
+
+    Ok(NonNull::new(out))
+}
+
 pub fn bridge_unit<F>(call: F) -> Result<()>
 where
     F: FnOnce(*mut *mut c_char) -> i32,

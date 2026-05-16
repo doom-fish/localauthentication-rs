@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1] - 2026-05-16
+
+### Added
+
+- Wrapped macOS 15 `LAEnvironment`, `LAEnvironmentObserver`, `LAEnvironmentState`, and the biometry, companion, and user-password mechanism subclasses with observer registration support.
+- Added `SecKeyExchangeParameters` and `LAPrivateKey::exchange_keys_with_public_key` for safe Diffie-Hellman-style key exchange.
+- Added `tests/la_environment_tests.rs`, extended the key tests for live key exchange, and shipped `examples/10_environment.rs` plus an updated `09_public_key` example.
+
+### Changed
+
+- Completed the `COVERAGE_AUDIT.md` gap list and refreshed the README/COVERAGE docs for the fully wrapped environment and key-exchange surface.
+
 ## [0.2.0] - 2026-05-16
 
 ### Added

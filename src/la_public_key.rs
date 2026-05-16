@@ -64,6 +64,61 @@ impl From<String> for SecKeyAlgorithm {
     }
 }
 
+/// Typed wrapper for the `SecKeyKeyExchangeParameter*` dictionary accepted by `LAPrivateKey::exchange_keys_with_public_key`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SecKeyExchangeParameters {
+    requested_size: Option<usize>,
+    shared_info: Option<Vec<u8>>,
+}
+
+impl SecKeyExchangeParameters {
+    /// Create an empty parameter dictionary.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create a dictionary that requests a derived key of the supplied length.
+    #[must_use]
+    pub const fn with_requested_size(requested_size: usize) -> Self {
+        Self {
+            requested_size: Some(requested_size),
+            shared_info: None,
+        }
+    }
+
+    /// Override the requested derived-key length.
+    #[must_use]
+    pub const fn requested_size(mut self, requested_size: usize) -> Self {
+        self.requested_size = Some(requested_size);
+        self
+    }
+
+    /// Attach additional shared info for algorithms that support KDF context data.
+    #[must_use]
+    pub fn with_shared_info(mut self, shared_info: impl Into<Vec<u8>>) -> Self {
+        self.shared_info = Some(shared_info.into());
+        self
+    }
+
+    /// Clear any previously configured shared info.
+    #[must_use]
+    pub fn without_shared_info(mut self) -> Self {
+        self.shared_info = None;
+        self
+    }
+
+    #[must_use]
+    pub(crate) const fn requested_size_value(&self) -> Option<usize> {
+        self.requested_size
+    }
+
+    #[must_use]
+    pub(crate) fn shared_info_value(&self) -> Option<&[u8]> {
+        self.shared_info.as_deref()
+    }
+}
+
 /// Managed wrapper around Apple's `LAPublicKey`.
 #[derive(Debug)]
 pub struct LAPublicKey {

@@ -88,4 +88,17 @@ extern "C" {
         out_value: *mut u8,
         error_out: *mut *mut c_char,
     ) -> i32;
+    pub fn la_private_key_exchange_keys_with_public_key(
+        key: *mut c_void,
+        public_key: *const u8,
+        public_key_len: usize,
+        algorithm: *const c_char,
+        requested_size: i64,
+        shared_info: *const u8,
+        shared_info_len: usize,
+        has_shared_info: u8,
+        out_bytes: *mut *mut u8,
+        out_len: *mut usize,
+        error_out: *mut *mut c_char,
+    ) -> i32;
 }

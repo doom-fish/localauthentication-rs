@@ -2,14 +2,15 @@
 
 Safe Rust bindings for Apple's [LocalAuthentication](https://developer.apple.com/documentation/localauthentication) framework on macOS.
 
-> **Status:** v0.2.0 expands coverage across `LAContext`, `LAPolicy`, `LAError`, `LACredential`, `LAAuthenticationRequirement`, `LARight`, `LARightStore`, `LAPersistedRight`, `LAPublicKey`, `LAPrivateKey`, and `LASecret`.
+> **Status:** v0.2.1 expands coverage across `LAContext`, `LAPolicy`, `LAError`, `LACredential`, `LAAuthenticationRequirement`, `LARight`, `LARightStore`, `LAPersistedRight`, `LAPublicKey`, `LAPrivateKey`, `LASecret`, and the macOS 15 `LAEnvironment` observer/state surface.
 
 ## Platform notes
 
 - The Rust crate is macOS-focused and links the system `LocalAuthentication.framework`.
 - The Swift bridge now targets **macOS 13+**.
-- `LAContext::domain_state()` and companion-domain details are macOS 15+ APIs.
+- `LAContext::domain_state()` plus the `LAEnvironment::{current_user, state, add_observer}` surface are macOS 15+ APIs.
 - Persisted-right and key APIs can require signing or entitlements; the examples and tests treat `OSStatus -34018` as an expected environment limitation.
+- `LAPrivateKey::exchange_keys_with_public_key` uses `SecKeyExchangeParameters` for the requested derived-key length and optional shared-info KDF context.
 
 ## Quick start
 
@@ -40,7 +41,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - `LAPolicy`, `LAError`, `LA_ERROR_DOMAIN`, `BiometryType`, and `LACompanionType`
 - `LAAuthenticationRequirement` and `LABiometryFallbackRequirement` builders for rights
 - `LARight` and `LARightStore` for in-memory and persisted authorization flows
-- `LAPersistedRight`, `LASecret`, `LAPrivateKey`, `LAPublicKey`, and `SecKeyAlgorithm` helpers for persisted secrets and asymmetric-key operations
+- `LAPersistedRight`, `LASecret`, `LAPrivateKey`, `LAPublicKey`, `SecKeyAlgorithm`, and `SecKeyExchangeParameters` helpers for persisted secrets and asymmetric-key operations
+- `LAEnvironment`, `LAEnvironmentObserver`, `LAEnvironmentState`, and the environment mechanism subclasses for macOS 15 environment snapshots and change notifications
 - Backward-compatible aliases for the v0.1.x surface (`Policy`, `LocalAuthenticationError`, `context`, and `error`)
 
 ## Examples
@@ -55,7 +57,8 @@ The crate ships numbered examples for every logical area:
 - `06_rights` — right state/tag/preflight/deauthorize flow
 - `07_right_store` — shared `LARightStore` persistence entry points
 - `08_persisted_right` — `LAPersistedRight`, `LASecret`, and `LAPrivateKey`
-- `09_public_key` — `LAPublicKey` export, verify, and encrypt capability checks
+- `09_public_key` — `LAPublicKey` export plus `LAPrivateKey` verify/encrypt/key-exchange capability checks
+- `10_environment` — `LAEnvironment`, observer registration, and mechanism snapshots
 
 Run the full verification matrix with:
 

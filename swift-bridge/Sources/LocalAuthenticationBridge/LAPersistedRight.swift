@@ -47,6 +47,26 @@ func laPrivateKey(_ ptr: UnsafeMutableRawPointer?) throws -> LAPrivateKey {
     try laBorrowHandle(ptr, as: LAPrivateKeyHandle.self, name: "LAPrivateKey").value
 }
 
+@available(macOS 13.0, *)
+@inline(__always)
+func laSecKeyExchangeParameters(
+    requestedSize: Int64,
+    sharedInfo: UnsafePointer<UInt8>?,
+    sharedInfoLen: UInt,
+    hasSharedInfo: UInt8
+) throws -> [SecKeyKeyExchangeParameter: Any] {
+    var parameters: [SecKeyKeyExchangeParameter: Any] = [:]
+
+    if requestedSize >= 0 {
+        parameters[.requestedSize] = Int(requestedSize)
+    }
+    if hasSharedInfo != 0 {
+        parameters[.sharedInfo] = laData(sharedInfo, len: Int(sharedInfoLen))
+    }
+
+    return parameters
+}
+
 @_cdecl("la_persisted_right_release")
 public func la_persisted_right_release(_ ptr: UnsafeMutableRawPointer?) {
     laReleaseHandle(ptr)
@@ -380,6 +400,46 @@ public func la_private_key_can_exchange_keys_using_algorithm(
             let key = try laPrivateKey(keyPtr)
             outValue.pointee = key.canExchangeKeys(using: algorithm) ? 1 : 0
             return LA_OK
+        }
+        throw LABridgeError.bridgeFailed("LAPrivateKey requires macOS 13.0")
+    } catch {
+        return laFail(error, errorOut)
+    }
+}
+
+@_cdecl("la_private_key_exchange_keys_with_public_key")
+public func la_private_key_exchange_keys_with_public_key(
+    _ keyPtr: UnsafeMutableRawPointer?,
+    _ publicKey: UnsafePointer<UInt8>?,
+    _ publicKeyLen: UInt,
+    _ algorithmRaw: UnsafePointer<CChar>?,
+    _ requestedSize: Int64,
+    _ sharedInfo: UnsafePointer<UInt8>?,
+    _ sharedInfoLen: UInt,
+    _ hasSharedInfo: UInt8,
+    _ outBytes: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>?>?,
+    _ outLen: UnsafeMutablePointer<UInt>?,
+    _ errorOut: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+    do {
+        let algorithm = try laSecKeyAlgorithm(algorithmRaw)
+        let publicKey = laData(publicKey, len: Int(publicKeyLen))
+        if #available(macOS 13.0, *) {
+            let key = try laPrivateKey(keyPtr)
+            let parameters = try laSecKeyExchangeParameters(
+                requestedSize: requestedSize,
+                sharedInfo: sharedInfo,
+                sharedInfoLen: sharedInfoLen,
+                hasSharedInfo: hasSharedInfo
+            )
+            let sharedSecret = try laAwait {
+                try await key.exchangeKeys(
+                    publicKey: publicKey,
+                    algorithm: algorithm,
+                    parameters: parameters
+                )
+            }
+            return laCopyData(sharedSecret, outBytes, outLen, errorOut)
         }
         throw LABridgeError.bridgeFailed("LAPrivateKey requires macOS 13.0")
     } catch {

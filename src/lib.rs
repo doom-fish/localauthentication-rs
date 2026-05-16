@@ -14,6 +14,7 @@ pub mod ffi;
 pub mod la_authentication_requirement;
 pub mod la_context;
 pub mod la_credential;
+pub mod la_environment;
 pub mod la_error;
 pub mod la_persisted_right;
 pub mod la_policy;
@@ -30,10 +31,15 @@ pub use la_context::{
     LADomainStateBiometry, LADomainStateCompanion,
 };
 pub use la_credential::{LACredential, LACredentialType};
+pub use la_environment::{
+    LAEnvironment, LAEnvironmentMechanism, LAEnvironmentMechanismBiometry,
+    LAEnvironmentMechanismCompanion, LAEnvironmentMechanismUserPassword,
+    LAEnvironmentObserver, LAEnvironmentObserverRegistration, LAEnvironmentState,
+};
 pub use la_error::{LAError, LocalAuthenticationError, Result, LA_ERROR_DOMAIN};
 pub use la_persisted_right::{LAPersistedRight, LAPrivateKey, LASecret};
 pub use la_policy::{LAPolicy, Policy};
-pub use la_public_key::{LAPublicKey, SecKeyAlgorithm};
+pub use la_public_key::{LAPublicKey, SecKeyAlgorithm, SecKeyExchangeParameters};
 pub use la_right::{LARight, LARightState};
 pub use la_right_store::LARightStore;
 
@@ -47,10 +53,15 @@ pub mod prelude {
         LADomainStateBiometry, LADomainStateCompanion,
     };
     pub use crate::la_credential::{LACredential, LACredentialType};
+    pub use crate::la_environment::{
+        LAEnvironment, LAEnvironmentMechanism, LAEnvironmentMechanismBiometry,
+        LAEnvironmentMechanismCompanion, LAEnvironmentMechanismUserPassword,
+        LAEnvironmentObserver, LAEnvironmentObserverRegistration, LAEnvironmentState,
+    };
     pub use crate::la_error::{LAError, LocalAuthenticationError, Result, LA_ERROR_DOMAIN};
     pub use crate::la_persisted_right::{LAPersistedRight, LAPrivateKey, LASecret};
     pub use crate::la_policy::{LAPolicy, Policy};
-    pub use crate::la_public_key::{LAPublicKey, SecKeyAlgorithm};
+    pub use crate::la_public_key::{LAPublicKey, SecKeyAlgorithm, SecKeyExchangeParameters};
     pub use crate::la_right::{LARight, LARightState};
     pub use crate::la_right_store::LARightStore;
 }

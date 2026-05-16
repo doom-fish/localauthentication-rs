@@ -3,10 +3,10 @@
 Audit scope: Objective-C symbols in `LocalAuthentication.framework/Headers`, filtered to macOS-available public API. Deprecated macOS symbols are listed as **EXEMPT** and excluded from the coverage denominator per the audit instructions. Crate reachability was checked against public Rust exports under `src/` and the Swift `_cdecl` bridge under `swift-bridge/Sources/LocalAuthenticationBridge/`.
 
 SDK_PUBLIC_SYMBOLS: 139
-VERIFIED: 102
-GAPS: 28
+VERIFIED: 130
+GAPS: 0
 EXEMPT: 9
-COVERAGE_PCT: 78.5%
+COVERAGE_PCT: 100.0%
 
 ## 🟢 VERIFIED
 | Symbol | Kind | Header | Wrapped by |
@@ -96,6 +96,7 @@ COVERAGE_PCT: 78.5%
 | `LAPrivateKey.decryptData:secKeyAlgorithm:completion:` | method | `LAPrivateKey.h` | `LAPrivateKey::decrypt` |
 | `LAPrivateKey.publicKey` | property | `LAPrivateKey.h` | `LAPrivateKey::public_key` |
 | `LAPrivateKey.signData:secKeyAlgorithm:completion:` | method | `LAPrivateKey.h` | `LAPrivateKey::sign` |
+| `LAPrivateKey.exchangeKeysWithPublicKey:secKeyAlgorithm:secKeyParameters:completion:` | method | `LAPrivateKey.h` | `LAPrivateKey::exchange_keys_with_public_key` |
 | `LAPublicKey` | class | `LAPublicKey.h` | `LAPublicKey` |
 | `LAPublicKey.canEncryptUsingSecKeyAlgorithm:` | method | `LAPublicKey.h` | `LAPublicKey::can_encrypt_using` |
 | `LAPublicKey.canVerifyUsingSecKeyAlgorithm:` | method | `LAPublicKey.h` | `LAPublicKey::can_verify_using` |
@@ -113,38 +114,36 @@ COVERAGE_PCT: 78.5%
 | `LADomainStateCompanion.availableCompanionTypes` | property | `LADomainState.h` | `LADomainStateCompanion::available_companion_types` |
 | `LADomainStateCompanion.stateHash` | property | `LADomainState.h` | `LADomainStateCompanion::state_hash` |
 | `LADomainStateCompanion.stateHashForCompanionType:` | method | `LADomainState.h` | `LADomainStateCompanion::state_hash_for` |
+| `LAEnvironment` | class | `LAEnvironment.h` | `LAEnvironment` |
+| `LAEnvironment.addObserver:` | method | `LAEnvironment.h` | `LAEnvironment::add_observer` |
+| `LAEnvironment.currentUser` | property | `LAEnvironment.h` | `LAEnvironment::current_user` |
+| `LAEnvironment.removeObserver:` | method | `LAEnvironment.h` | `LAEnvironment::remove_observer` |
+| `LAEnvironment.state` | property | `LAEnvironment.h` | `LAEnvironment::state` |
+| `LAEnvironmentObserver` | protocol | `LAEnvironment.h` | `LAEnvironmentObserver` |
+| `LAEnvironmentObserver.environment:stateDidChangeFromOldState:` | method | `LAEnvironment.h` | `LAEnvironmentObserver::state_did_change` |
+| `LAEnvironmentState` | class | `LAEnvironmentState.h` | `LAEnvironmentState` |
+| `LAEnvironmentState.allMechanisms` | property | `LAEnvironmentState.h` | `LAEnvironmentState::all_mechanisms` |
+| `LAEnvironmentState.biometry` | property | `LAEnvironmentState.h` | `LAEnvironmentState::biometry` |
+| `LAEnvironmentState.companions` | property | `LAEnvironmentState.h` | `LAEnvironmentState::companions` |
+| `LAEnvironmentState.userPassword` | property | `LAEnvironmentState.h` | `LAEnvironmentState::user_password` |
+| `LAEnvironmentMechanism` | class | `LAEnvironmentMechanism.h` | `LAEnvironmentMechanism` |
+| `LAEnvironmentMechanism.iconSystemName` | property | `LAEnvironmentMechanism.h` | `LAEnvironmentMechanism::icon_system_name` |
+| `LAEnvironmentMechanism.isUsable` | property | `LAEnvironmentMechanism.h` | `LAEnvironmentMechanism::is_usable` |
+| `LAEnvironmentMechanism.localizedName` | property | `LAEnvironmentMechanism.h` | `LAEnvironmentMechanism::localized_name` |
+| `LAEnvironmentMechanismBiometry` | class | `LAEnvironmentMechanismBiometry.h` | `LAEnvironmentMechanismBiometry` |
+| `LAEnvironmentMechanismBiometry.biometryType` | property | `LAEnvironmentMechanismBiometry.h` | `LAEnvironmentMechanismBiometry::biometry_type` |
+| `LAEnvironmentMechanismBiometry.builtInSensorInaccessible` | property | `LAEnvironmentMechanismBiometry.h` | `LAEnvironmentMechanismBiometry::built_in_sensor_inaccessible` |
+| `LAEnvironmentMechanismBiometry.isEnrolled` | property | `LAEnvironmentMechanismBiometry.h` | `LAEnvironmentMechanismBiometry::is_enrolled` |
+| `LAEnvironmentMechanismBiometry.isLockedOut` | property | `LAEnvironmentMechanismBiometry.h` | `LAEnvironmentMechanismBiometry::is_locked_out` |
+| `LAEnvironmentMechanismBiometry.stateHash` | property | `LAEnvironmentMechanismBiometry.h` | `LAEnvironmentMechanismBiometry::state_hash` |
+| `LAEnvironmentMechanismCompanion` | class | `LAEnvironmentMechanismCompanion.h` | `LAEnvironmentMechanismCompanion` |
+| `LAEnvironmentMechanismCompanion.stateHash` | property | `LAEnvironmentMechanismCompanion.h` | `LAEnvironmentMechanismCompanion::state_hash` |
+| `LAEnvironmentMechanismCompanion.type` | property | `LAEnvironmentMechanismCompanion.h` | `LAEnvironmentMechanismCompanion::companion_type` |
+| `LAEnvironmentMechanismUserPassword` | class | `LAEnvironmentMechanismUserPassword.h` | `LAEnvironmentMechanismUserPassword` |
+| `LAEnvironmentMechanismUserPassword.isSet` | property | `LAEnvironmentMechanismUserPassword.h` | `LAEnvironmentMechanismUserPassword::is_set` |
 
 ## 🔴 GAPS
-| Symbol | Kind | Header | Notes |
-| --- | --- | --- | --- |
-| `LAPrivateKey.exchangeKeysWithPublicKey:secKeyAlgorithm:secKeyParameters:completion:` | method | `LAPrivateKey.h` | Missing the actual key-exchange call and a safe SecKey parameter-dictionary wrapper. |
-| `LAEnvironment` | class | `LAEnvironment.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironment.addObserver:` | method | `LAEnvironment.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironment.currentUser` | property | `LAEnvironment.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironment.removeObserver:` | method | `LAEnvironment.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironment.state` | property | `LAEnvironment.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentObserver` | protocol | `LAEnvironment.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentObserver.environment:stateDidChangeFromOldState:` | method | `LAEnvironment.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentState` | class | `LAEnvironmentState.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentState.allMechanisms` | property | `LAEnvironmentState.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentState.biometry` | property | `LAEnvironmentState.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentState.companions` | property | `LAEnvironmentState.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentState.userPassword` | property | `LAEnvironmentState.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanism` | class | `LAEnvironmentMechanism.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanism.iconSystemName` | property | `LAEnvironmentMechanism.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanism.isUsable` | property | `LAEnvironmentMechanism.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanism.localizedName` | property | `LAEnvironmentMechanism.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismBiometry` | class | `LAEnvironmentMechanismBiometry.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismBiometry.biometryType` | property | `LAEnvironmentMechanismBiometry.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismBiometry.builtInSensorInaccessible` | property | `LAEnvironmentMechanismBiometry.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismBiometry.isEnrolled` | property | `LAEnvironmentMechanismBiometry.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismBiometry.isLockedOut` | property | `LAEnvironmentMechanismBiometry.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismBiometry.stateHash` | property | `LAEnvironmentMechanismBiometry.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismCompanion` | class | `LAEnvironmentMechanismCompanion.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismCompanion.stateHash` | property | `LAEnvironmentMechanismCompanion.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismCompanion.type` | property | `LAEnvironmentMechanismCompanion.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismUserPassword` | class | `LAEnvironmentMechanismUserPassword.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
-| `LAEnvironmentMechanismUserPassword.isSet` | property | `LAEnvironmentMechanismUserPassword.h` | No Rust/Swift bridge coverage for the macOS 15 environment observer/state surface. |
+None.
 
 ## ⏭️ EXEMPT
 | Symbol | Kind | Header | Reason | SDK attribute |

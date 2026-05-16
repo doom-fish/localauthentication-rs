@@ -2,7 +2,7 @@
 
 use crate::ffi;
 use crate::la_error::{LAError, Result};
-use crate::la_public_key::{LAPublicKey, SecKeyAlgorithm};
+use crate::la_public_key::{LAPublicKey, SecKeyAlgorithm, SecKeyExchangeParameters};
 use crate::la_right::LARightState;
 use crate::private::{
     bridge_bool, bridge_bytes, bridge_i32, bridge_i64, bridge_ptr, bridge_unit, cstring,
@@ -306,6 +306,50 @@ impl LAPrivateKey {
                 self.handle.as_ptr(),
                 algorithm.as_ptr(),
                 out,
+                error_out,
+            )
+        })
+    }
+
+    /// Perform a Diffie-Hellman-style key exchange with a remote public key.
+    ///
+    /// # Errors
+    ///
+    /// Returns a mapped framework or bridge error if key exchange fails.
+    pub fn exchange_keys_with_public_key(
+        &self,
+        public_key: &[u8],
+        algorithm: &SecKeyAlgorithm,
+        parameters: &SecKeyExchangeParameters,
+    ) -> Result<Vec<u8>> {
+        let algorithm = cstring(algorithm.raw_name())?;
+        let requested_size = parameters
+            .requested_size_value()
+            .map(i64::try_from)
+            .transpose()
+            .map_err(|_| {
+                LAError::InvalidArgument(
+                    "requested key-exchange size must fit in a signed 64-bit integer".to_owned(),
+                )
+            })?
+            .unwrap_or(-1);
+        let shared_info = parameters.shared_info_value();
+        let shared_info_ptr = shared_info.map_or(std::ptr::null(), <[u8]>::as_ptr);
+        let shared_info_len = shared_info.map_or(0, <[u8]>::len);
+        let has_shared_info = u8::from(shared_info.is_some());
+
+        bridge_bytes(|out, out_len, error_out| unsafe {
+            ffi::la_persisted_right::la_private_key_exchange_keys_with_public_key(
+                self.handle.as_ptr(),
+                public_key.as_ptr(),
+                public_key.len(),
+                algorithm.as_ptr(),
+                requested_size,
+                shared_info_ptr,
+                shared_info_len,
+                has_shared_info,
+                out,
+                out_len,
                 error_out,
             )
         })

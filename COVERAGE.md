@@ -24,8 +24,7 @@ Legend:
 | `LARight.h` | `LARightState`, `LARight` state/tag/init/authorize/preflight/deauthorize | ✅ | Fully surfaced in Rust and the Swift bridge. |
 | `LARightStore.h` | Shared store, fetch, save, save-with-secret, remove, remove-by-identifier, remove-all | ✅ | Implemented as `LARightStore`. |
 | `LAPersistedRight.h` / `LASecret.h` | Persisted right, managed secret loading | ✅ | Implemented as `LAPersistedRight` and `LASecret`. |
-| `LAPrivateKey.h` | `publicKey`, sign/decrypt capability checks, sign/decrypt operations, key-exchange capability checks | ✅ | Implemented as `LAPrivateKey` plus `SecKeyAlgorithm`. |
-| `LAPrivateKey.h` | `exchangeKeysWithPublicKey:secKeyAlgorithm:secKeyParameters:completion:` | 🟡 | Capability probing is available through `can_exchange_keys_using`, but the actual key-exchange operation and parameter-dictionary model are not wrapped yet. |
+| `LAPrivateKey.h` | `publicKey`, sign/decrypt capability checks, sign/decrypt operations, key-exchange capability checks, and `exchangeKeysWithPublicKey:secKeyAlgorithm:secKeyParameters:completion:` | ✅ | Implemented as `LAPrivateKey`, `SecKeyAlgorithm`, and `SecKeyExchangeParameters`. |
 | `LAPublicKey.h` | Export, encrypt capability/operation, verify capability/operation | ✅ | Implemented as `LAPublicKey`. |
 | `LAPublicDefines.h` | Raw `kLA*` constant families | 🟡 | Represented through typed Rust enums and helpers instead of one constant per SDK symbol. |
-| `LAEnvironment.h` / `LAEnvironmentState.h` / `LAEnvironmentMechanism*.h` | `LAEnvironment`, observer callbacks, environment-state snapshots, and mechanism subclasses | ⏭️ | macOS 15-only environment observer/state surface is outside the requested v0.2.0 split and would require additional callback and value-hierarchy modeling. |
+| `LAEnvironment.h` / `LAEnvironmentState.h` / `LAEnvironmentMechanism*.h` | `LAEnvironment`, observer callbacks, environment-state snapshots, and mechanism subclasses | ✅ | Implemented as `LAEnvironment`, `LAEnvironmentObserver`, `LAEnvironmentState`, `LAEnvironmentMechanism`, and the biometry/companion/user-password mechanism wrappers. |

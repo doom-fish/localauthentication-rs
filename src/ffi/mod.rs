@@ -10,6 +10,7 @@
 pub mod la_authentication_requirement;
 pub mod la_context;
 pub mod la_credential;
+pub mod la_environment;
 pub mod la_error;
 pub mod la_persisted_right;
 pub mod la_policy;
