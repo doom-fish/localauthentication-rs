@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "LocalAuthenticationBridge",
     platforms: [
-        .macOS(.v10_13)
+        .macOS(.v13)
     ],
     products: [
         .library(

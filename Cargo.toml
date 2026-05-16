@@ -1,11 +1,11 @@
 [package]
 name = "localauthentication-rs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/localauthentication-rs"
 repository = "https://github.com/doom-fish/localauthentication-rs"
-description = "Safe Rust bindings for Apple's LocalAuthentication framework — LAContext, policies, biometry, and evaluation on macOS"
+description = "Safe Rust bindings for Apple's LocalAuthentication framework — contexts, rights, persisted secrets, keys, and credentials on macOS"
 authors = ["Per Johansson <per@doom.fish>"]
 keywords = ["localauthentication", "biometrics", "touchid", "faceid", "macos"]
 categories = ["api-bindings", "os::macos-apis"]
@@ -17,9 +17,11 @@ include = [
     "swift-bridge/Package.swift",
     "swift-bridge/Sources/**/*",
     "examples/**/*",
+    "tests/**/*",
     "build.rs",
     "Cargo.toml",
     "README.md",
+    "COVERAGE.md",
     "LICENSE-*",
     "CHANGELOG.md",
 ]

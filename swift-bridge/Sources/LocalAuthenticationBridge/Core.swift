@@ -1,5 +1,5 @@
 import Foundation
-import LocalAuthentication
+import Security
 
 let LA_OK: Int32 = 0
 let LA_INVALID_ARGUMENT: Int32 = -10_000
@@ -7,15 +7,18 @@ let LA_TIMED_OUT: Int32 = -10_001
 let LA_BRIDGE_FAILED: Int32 = -10_002
 let LA_UNKNOWN: Int32 = -10_099
 
-let LA_POLICY_DEVICE_OWNER_AUTHENTICATION_WITH_BIOMETRICS: Int32 = 1
-let LA_POLICY_DEVICE_OWNER_AUTHENTICATION: Int32 = 2
-let LA_POLICY_DEVICE_OWNER_AUTHENTICATION_WITH_COMPANION: Int32 = 3
-let LA_POLICY_DEVICE_OWNER_AUTHENTICATION_WITH_BIOMETRICS_OR_COMPANION: Int32 = 4
-
+@available(macOS 10.13.2, *)
 let LA_BIOMETRY_NONE: Int32 = 0
+@available(macOS 10.13.2, *)
 let LA_BIOMETRY_TOUCH_ID: Int32 = 1
+@available(macOS 10.13.2, *)
 let LA_BIOMETRY_FACE_ID: Int32 = 2
+@available(macOS 14.0, *)
 let LA_BIOMETRY_OPTIC_ID: Int32 = 4
+
+let LA_COMPANION_WATCH: Int32 = 1
+let LA_COMPANION_MAC: Int32 = 2
+let LA_COMPANION_VISION: Int32 = 4
 
 enum LABridgeError: LocalizedError {
     case invalidArgument(String)
@@ -50,6 +53,26 @@ enum LABridgeError: LocalizedError {
     }
 }
 
+final class ResultHolder<Value> {
+    private let lock = NSLock()
+    private var _result: Result<Value, Error>?
+
+    var result: Result<Value, Error>? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _result
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _result = newValue
+        }
+    }
+}
+
+class LABridgeHandleBase: NSObject {}
+
 @inline(__always)
 func laCString(_ string: String) -> UnsafeMutablePointer<CChar>? {
     string.withCString { strdup($0) }
@@ -65,67 +88,73 @@ func laWriteError(
 
 @inline(__always)
 func laFail(
-    _ error: LABridgeError,
+    _ error: Error,
     _ errorOut: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> Int32 {
-    laWriteError(errorOut, error.localizedDescription)
-    return error.statusCode
+    let status: Int32
+    if let bridgeError = error as? LABridgeError {
+        status = bridgeError.statusCode
+        laWriteError(errorOut, bridgeError.localizedDescription)
+    } else {
+        let nsError = error as NSError
+        status = Int32(nsError.code)
+        laWriteError(errorOut, nsError.localizedDescription)
+    }
+    return status
 }
 
 @inline(__always)
-func laRetain<T: AnyObject>(_ object: T) -> UnsafeMutableRawPointer {
+func laRetainHandle<T: LABridgeHandleBase>(_ object: T) -> UnsafeMutableRawPointer {
     Unmanaged.passRetained(object).toOpaque()
 }
 
 @inline(__always)
-func laBorrow<T: AnyObject>(_ ptr: UnsafeMutableRawPointer) -> T {
-    Unmanaged<T>.fromOpaque(ptr).takeUnretainedValue()
-}
-
-@_cdecl("la_context_release")
-public func la_context_release(_ ptr: UnsafeMutableRawPointer?) {
-    guard let ptr else { return }
-    Unmanaged<AnyObject>.fromOpaque(ptr).release()
-}
-
-@inline(__always)
-func laContext(_ ptr: UnsafeMutableRawPointer?) throws -> LAContext {
+func laBorrowHandle<T: LABridgeHandleBase>(
+    _ ptr: UnsafeMutableRawPointer?,
+    as type: T.Type,
+    name: String
+) throws -> T {
     guard let ptr else {
-        throw LABridgeError.invalidArgument("missing `LAContext` handle")
+        throw LABridgeError.invalidArgument("missing `\(name)` handle")
     }
-    return laBorrow(ptr)
+    let typed = ptr.assumingMemoryBound(to: T.self)
+    return Unmanaged<T>.fromOpaque(UnsafeRawPointer(typed)).takeUnretainedValue()
 }
 
 @inline(__always)
-func laPolicy(_ raw: Int32) throws -> LAPolicy {
-    switch raw {
-    case LA_POLICY_DEVICE_OWNER_AUTHENTICATION_WITH_BIOMETRICS:
-        return .deviceOwnerAuthenticationWithBiometrics
-    case LA_POLICY_DEVICE_OWNER_AUTHENTICATION:
-        return .deviceOwnerAuthentication
-    case LA_POLICY_DEVICE_OWNER_AUTHENTICATION_WITH_COMPANION:
-        if #available(macOS 15.0, *) {
-            return .deviceOwnerAuthenticationWithCompanion
-        }
-        throw LABridgeError.bridgeFailed(
-            "companion-device authentication requires macOS 15.0"
-        )
-    case LA_POLICY_DEVICE_OWNER_AUTHENTICATION_WITH_BIOMETRICS_OR_COMPANION:
-        if #available(macOS 15.0, *) {
-            return .deviceOwnerAuthenticationWithBiometricsOrCompanion
-        }
-        throw LABridgeError.bridgeFailed(
-            "biometric-or-companion authentication requires macOS 15.0"
-        )
-    default:
-        throw LABridgeError.invalidArgument("unsupported policy value: \(raw)")
-    }
+func laReleaseHandle(_ ptr: UnsafeMutableRawPointer?) {
+    guard let ptr else { return }
+    let typed = ptr.assumingMemoryBound(to: LABridgeHandleBase.self)
+    Unmanaged<LABridgeHandleBase>.fromOpaque(UnsafeRawPointer(typed)).release()
 }
 
 @inline(__always)
 func laOptionalString(_ value: UnsafePointer<CChar>?) -> String? {
     guard let value else { return nil }
     return String(cString: value)
+}
+
+@inline(__always)
+func laRequiredString(_ value: UnsafePointer<CChar>?, name: String) throws -> String {
+    guard let value else {
+        throw LABridgeError.invalidArgument("\(name) must not be null")
+    }
+    let string = String(cString: value)
+    guard !string.isEmpty else {
+        throw LABridgeError.invalidArgument("\(name) must not be empty")
+    }
+    return string
+}
+
+@inline(__always)
+func laData(_ bytes: UnsafePointer<UInt8>?, len: Int) -> Data {
+    guard len > 0 else {
+        return Data()
+    }
+    guard let bytes else {
+        return Data()
+    }
+    return Data(bytes: bytes, count: len)
 }
 
 @inline(__always)
@@ -147,7 +176,7 @@ func laCopyData(
 ) -> Int32 {
     guard let outBytes, let outLen else {
         return laFail(
-            .invalidArgument("missing output pointers for byte buffer"),
+            LABridgeError.invalidArgument("missing output pointers for byte buffer"),
             errorOut
         )
     }
@@ -159,7 +188,7 @@ func laCopyData(
     }
 
     guard let raw = malloc(data.count) else {
-        return laFail(.bridgeFailed("malloc failed"), errorOut)
+        return laFail(LABridgeError.bridgeFailed("malloc failed"), errorOut)
     }
     let buffer = raw.assumingMemoryBound(to: UInt8.self)
     data.copyBytes(to: buffer, count: data.count)
@@ -168,23 +197,66 @@ func laCopyData(
 }
 
 @inline(__always)
-func laBiometryTypeValue(for context: LAContext) -> Int32 {
-    guard #available(macOS 10.13.2, *) else {
-        return LA_BIOMETRY_NONE
+func laCopyInt32Array(
+    _ values: [Int32],
+    _ outValues: UnsafeMutablePointer<UnsafeMutablePointer<Int32>?>?,
+    _ outLen: UnsafeMutablePointer<UInt>?,
+    _ errorOut: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+    guard let outValues, let outLen else {
+        return laFail(
+            LABridgeError.invalidArgument("missing output pointers for int32 array"),
+            errorOut
+        )
     }
 
-    let biometryType = context.biometryType
-    if biometryType == .none {
-        return LA_BIOMETRY_NONE
+    outLen.pointee = UInt(values.count)
+    if values.isEmpty {
+        outValues.pointee = nil
+        return LA_OK
     }
-    if biometryType == .touchID {
-        return LA_BIOMETRY_TOUCH_ID
+
+    let count = values.count
+    guard let raw = malloc(count * MemoryLayout<Int32>.stride) else {
+        return laFail(LABridgeError.bridgeFailed("malloc failed"), errorOut)
     }
-    if #available(macOS 10.15, *), biometryType == .faceID {
-        return LA_BIOMETRY_FACE_ID
+    let buffer = raw.assumingMemoryBound(to: Int32.self)
+    for (index, value) in values.enumerated() {
+        buffer.advanced(by: index).pointee = value
     }
-    if #available(macOS 14.0, *), biometryType == .opticID {
-        return LA_BIOMETRY_OPTIC_ID
+    outValues.pointee = buffer
+    return LA_OK
+}
+
+func laAwait<Value>(
+    timeout: TimeInterval = 30,
+    _ operation: @escaping () async throws -> Value
+) throws -> Value {
+    let semaphore = DispatchSemaphore(value: 0)
+    let holder = ResultHolder<Value>()
+
+    Task {
+        do {
+            holder.result = .success(try await operation())
+        } catch {
+            holder.result = .failure(error)
+        }
+        semaphore.signal()
     }
-    return LA_BIOMETRY_NONE
+
+    if semaphore.wait(timeout: .now() + timeout) == .timedOut {
+        throw LABridgeError.timedOut("LocalAuthentication operation timed out")
+    }
+
+    guard let result = holder.result else {
+        throw LABridgeError.unknown("LocalAuthentication operation completed without a result")
+    }
+
+    return try result.get()
+}
+
+@inline(__always)
+func laSecKeyAlgorithm(_ rawValue: UnsafePointer<CChar>?) throws -> SecKeyAlgorithm {
+    let rawName = try laRequiredString(rawValue, name: "algorithm")
+    return SecKeyAlgorithm(rawValue: rawName as CFString)
 }

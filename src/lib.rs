@@ -11,13 +11,46 @@
 pub mod context;
 pub mod error;
 pub mod ffi;
+pub mod la_authentication_requirement;
+pub mod la_context;
+pub mod la_credential;
+pub mod la_error;
+pub mod la_persisted_right;
+pub mod la_policy;
+pub mod la_public_key;
+pub mod la_right;
+pub mod la_right_store;
 mod private;
 
-pub use context::{BiometryType, LAContext, Policy};
-pub use error::{LocalAuthenticationError, Result};
+pub use la_authentication_requirement::{
+    LAAuthenticationRequirement, LABiometryFallbackRequirement,
+};
+pub use la_context::{
+    BiometryType, LAAccessControlOperation, LACompanionType, LAContext, LADomainState,
+    LADomainStateBiometry, LADomainStateCompanion,
+};
+pub use la_credential::{LACredential, LACredentialType};
+pub use la_error::{LAError, LocalAuthenticationError, Result, LA_ERROR_DOMAIN};
+pub use la_persisted_right::{LAPersistedRight, LAPrivateKey, LASecret};
+pub use la_policy::{LAPolicy, Policy};
+pub use la_public_key::{LAPublicKey, SecKeyAlgorithm};
+pub use la_right::{LARight, LARightState};
+pub use la_right_store::LARightStore;
 
 /// Common imports for users of this crate.
 pub mod prelude {
-    pub use crate::context::{BiometryType, LAContext, Policy};
-    pub use crate::error::{LocalAuthenticationError, Result};
+    pub use crate::la_authentication_requirement::{
+        LAAuthenticationRequirement, LABiometryFallbackRequirement,
+    };
+    pub use crate::la_context::{
+        BiometryType, LAAccessControlOperation, LACompanionType, LAContext, LADomainState,
+        LADomainStateBiometry, LADomainStateCompanion,
+    };
+    pub use crate::la_credential::{LACredential, LACredentialType};
+    pub use crate::la_error::{LAError, LocalAuthenticationError, Result, LA_ERROR_DOMAIN};
+    pub use crate::la_persisted_right::{LAPersistedRight, LAPrivateKey, LASecret};
+    pub use crate::la_policy::{LAPolicy, Policy};
+    pub use crate::la_public_key::{LAPublicKey, SecKeyAlgorithm};
+    pub use crate::la_right::{LARight, LARightState};
+    pub use crate::la_right_store::LARightStore;
 }

@@ -5,29 +5,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.set_interaction_not_allowed(true)?;
     context.set_localized_fallback_title(Some("Use Password"))?;
     context.set_localized_cancel_title(Some("Cancel"))?;
-    context.set_allowable_reuse_duration(30.0)?;
+    context.set_localized_reason("inspect the device owner's authentication state")?;
+    context.set_touch_id_authentication_allowable_reuse_duration(30.0)?;
 
-    let fallback = context.localized_fallback_title()?;
-    let cancel = context.localized_cancel_title()?;
-    assert_eq!(fallback.as_deref(), Some("Use Password"));
-    assert_eq!(cancel.as_deref(), Some("Cancel"));
-    assert!(context.interaction_not_allowed()?);
-    assert!((context.allowable_reuse_duration()? - 30.0).abs() < f64::EPSILON);
+    let credential = LACredential::application_password(b"secret".to_vec());
+    assert!(context.set_credential(&credential)?);
+    assert!(context.is_credential_set(LACredentialType::ApplicationPassword)?);
+    assert!(context.clear_credential(LACredentialType::ApplicationPassword)?);
 
     let preflight =
-        match context.can_evaluate_policy(Policy::DeviceOwnerAuthenticationWithBiometrics) {
+        match context.can_evaluate_policy(LAPolicy::DeviceOwnerAuthenticationWithBiometrics) {
             Ok(true) => "biometry available".to_owned(),
             Ok(false) => "biometry unavailable without a framework error".to_owned(),
             Err(error) => format!("biometry unavailable: {error}"),
         };
-    let biometry = context.biometry_type()?;
-    let domain_state_len = context
-        .evaluated_policy_domain_state()?
-        .map_or(0, |state| state.len());
+    let domain_state = context.domain_state()?;
 
     println!("preflight: {preflight}");
-    println!("biometry type: {biometry:?}");
-    println!("domain state bytes: {domain_state_len}");
-    println!("✅ localauth context + canEvaluatePolicy OK");
+    println!("localized reason: {}", context.localized_reason()?);
+    println!("biometry type: {:?}", context.biometry_type()?);
+    println!(
+        "domain state hash bytes: {}",
+        domain_state.state_hash().map_or(0, <[u8]>::len)
+    );
+    println!(
+        "reuse max seconds: {}",
+        LAContext::touch_id_authentication_maximum_allowable_reuse_duration()
+    );
+    println!("✅ localauth context + credentials OK");
     Ok(())
 }

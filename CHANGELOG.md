@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0] - 2026-05-16
+
+### Added
+
+- Safe Rust wrappers for `LACredential`, `LAAuthenticationRequirement`, `LABiometryFallbackRequirement`, `LARight`, `LARightStore`, `LAPersistedRight`, `LASecret`, `LAPrivateKey`, `LAPublicKey`, and `SecKeyAlgorithm`.
+- Expanded `LAContext` coverage for localized reason, credential APIs, companion-aware domain-state snapshots, and raw access-control evaluation.
+- `LA_ERROR_DOMAIN` / `LAError` helpers together with backward-compatible `Policy` and `LocalAuthenticationError` aliases.
+- Numbered examples `01_smoke` through `09_public_key` plus per-area integration tests.
+- `COVERAGE.md` documenting the SDK audit and deferred framework areas.
+
+### Changed
+
+- Split the Swift bridge into per-area source files and raised the SwiftPM deployment target to macOS 13.
+- Refreshed the README and crate metadata for the broader v0.2.0 surface.
+
 ## [0.1.0] - 2026-05-16
 
 ### Added
