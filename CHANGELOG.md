@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0] - 2026-05-17
+
+### Added
+
+- **Async API** gated behind the `async` feature.
+  - `AsyncLAContext` wrapper providing async methods for policy and access control evaluation.
+  - `AsyncPolicyEvaluationFuture` and `AsyncAccessControlEvaluationFuture` for awaiting authentication results.
+  - Callback-based Swift FFI thunks (`la_context_evaluate_policy_async`, `la_context_evaluate_access_control_async`).
+  - Integration with `doom-fish-utils::completion` for executor-agnostic, runtime-agnostic async operations.
+  - Example `examples/02_async_policy.rs` demonstrating async biometric authentication.
+  - Test suite `tests/async_api_tests.rs` covering happy path and error cases.
+
+### Changed
+
+- Updated `Cargo.toml` to include `async` feature gate and `doom-fish-utils` + `pollster` dependencies.
+- Updated `src/lib.rs` to conditionally export the new `async_api` module.
+
 ## [0.2.1] - 2026-05-16
 
 ### Added

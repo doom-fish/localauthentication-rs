@@ -1,6 +1,6 @@
 [package]
 name = "apple-localauthentication"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/localauthentication-rs"
@@ -39,9 +39,14 @@ crate-type = ["lib"]
 
 [features]
 default = []
+async = []
 
 [dependencies]
 libc = "0.2"
+doom-fish-utils = { path = "../doom-fish-utils", version = "0.1" }
+
+[dev-dependencies]
+pollster = "0.3"
 
 [package.metadata.docs.rs]
 all-features = true

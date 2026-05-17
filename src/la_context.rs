@@ -641,6 +641,14 @@ impl LAContext {
             }),
         })
     }
+
+    /// Internal helper to get the raw pointer for FFI calls.
+    ///
+    /// Used by the async API module. This is intentionally non-public.
+    #[cfg(feature = "async")]
+    pub(crate) const fn as_ptr(&self) -> *mut c_void {
+        self.handle.as_ptr()
+    }
 }
 
 #[cfg(test)]

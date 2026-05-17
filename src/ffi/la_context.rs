@@ -154,4 +154,22 @@ extern "C" {
         out_len: *mut usize,
         error_out: *mut *mut c_char,
     ) -> i32;
+
+    // Async APIs
+    pub fn la_context_evaluate_policy_async(
+        context: *mut c_void,
+        policy: i32,
+        localized_reason: *const c_char,
+        cb: extern "C" fn(u8, *const c_char, *mut c_void),
+        ctx: *mut c_void,
+    );
+
+    pub fn la_context_evaluate_access_control_async(
+        context: *mut c_void,
+        access_control: *const c_void,
+        operation: i32,
+        localized_reason: *const c_char,
+        cb: extern "C" fn(u8, *const c_char, *mut c_void),
+        ctx: *mut c_void,
+    );
 }

@@ -4,13 +4,25 @@ version = 3
 
 [[package]]
 name = "apple-localauthentication"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
+ "doom-fish-utils",
  "libc",
+ "pollster",
 ]
+
+[[package]]
+name = "doom-fish-utils"
+version = "0.1.0"
 
 [[package]]
 name = "libc"
 version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+
+[[package]]
+name = "pollster"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"

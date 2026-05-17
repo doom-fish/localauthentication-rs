@@ -23,6 +23,9 @@ pub mod la_right;
 pub mod la_right_store;
 mod private;
 
+#[cfg(feature = "async")]
+pub mod async_api;
+
 pub use la_authentication_requirement::{
     LAAuthenticationRequirement, LABiometryFallbackRequirement,
 };
