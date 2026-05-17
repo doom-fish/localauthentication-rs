@@ -7,6 +7,7 @@ use crate::la_context::LAContext;
 use crate::la_error::Result;
 use crate::la_policy::LAPolicy;
 use doom_fish_utils::completion::{error_from_cstr, AsyncCompletion, AsyncCompletionFuture};
+use doom_fish_utils::panic_safe::catch_user_panic;
 use std::ffi::c_void;
 use std::future::Future;
 use std::pin::Pin;
@@ -21,15 +22,17 @@ extern "C" fn evaluate_policy_callback(
     error: *const i8,
     user_data: *mut c_void,
 ) {
-    if error.is_null() {
-        // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
-        unsafe { AsyncCompletion::complete_ok(user_data, success != 0) };
-    } else {
-        // SAFETY: error is a valid C string from Swift bridge
-        let error_msg = unsafe { error_from_cstr(error) };
-        // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
-        unsafe { AsyncCompletion::<bool>::complete_err(user_data, error_msg) };
-    }
+    catch_user_panic("evaluate_policy_callback", || {
+        if error.is_null() {
+            // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
+            unsafe { AsyncCompletion::complete_ok(user_data, success != 0) };
+        } else {
+            // SAFETY: error is a valid C string from Swift bridge
+            let error_msg = unsafe { error_from_cstr(error) };
+            // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
+            unsafe { AsyncCompletion::<bool>::complete_err(user_data, error_msg) };
+        }
+    });
 }
 
 extern "C" fn evaluate_access_control_callback(
@@ -37,15 +40,17 @@ extern "C" fn evaluate_access_control_callback(
     error: *const i8,
     user_data: *mut c_void,
 ) {
-    if error.is_null() {
-        // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
-        unsafe { AsyncCompletion::complete_ok(user_data, success != 0) };
-    } else {
-        // SAFETY: error is a valid C string from Swift bridge
-        let error_msg = unsafe { error_from_cstr(error) };
-        // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
-        unsafe { AsyncCompletion::<bool>::complete_err(user_data, error_msg) };
-    }
+    catch_user_panic("evaluate_access_control_callback", || {
+        if error.is_null() {
+            // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
+            unsafe { AsyncCompletion::complete_ok(user_data, success != 0) };
+        } else {
+            // SAFETY: error is a valid C string from Swift bridge
+            let error_msg = unsafe { error_from_cstr(error) };
+            // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
+            unsafe { AsyncCompletion::<bool>::complete_err(user_data, error_msg) };
+        }
+    });
 }
 
 // ============================================================================

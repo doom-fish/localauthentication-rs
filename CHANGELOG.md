@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.1] - 2026-05-17
+
+### Fixed
+
+- Added panic-safety guards to async FFI callbacks (`evaluate_policy_callback`, `evaluate_access_control_callback`) using `doom_fish_utils::panic_safe::catch_user_panic` to prevent panics from unwinding across the FFI boundary.
+
 ## [0.3.0] - 2026-05-17
 
 ### Added
