@@ -80,7 +80,11 @@ unsafe extern "C" fn environment_observer_trampoline(
 
 unsafe extern "C" fn environment_observer_release(context: *mut c_void) {
     if let Some(context) = NonNull::new(context.cast::<EnvironmentObserverContext>()) {
-        unsafe { drop(Box::from_raw(context.as_ptr())) };
+        // The observer's destructor runs user code; a panic must not unwind
+        // across the Swift FFI boundary that invokes this release callback.
+        let _ = catch_unwind(AssertUnwindSafe(|| unsafe {
+            drop(Box::from_raw(context.as_ptr()));
+        }));
     }
 }
 

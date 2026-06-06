@@ -11,12 +11,24 @@ public func la_context_evaluate_policy_async(
     _ cb: @convention(c) (UInt8, UnsafePointer<CChar>?, UnsafeMutableRawPointer) -> Void,
     _ ctx: UnsafeMutableRawPointer
 ) {
+    // Resolve all pointer-derived inputs synchronously. The caller (Rust) frees
+    // `localizedReason` as soon as this function returns, and the borrowed
+    // context handle may be released before the deferred `Task` runs, so they
+    // must not be dereferenced inside the asynchronous closure.
+    let inputs: Result<(LAContext, LAPolicy, String), Error>
+    do {
+        inputs = .success((
+            try laContext(contextPtr),
+            try laPolicy(policyRaw),
+            try laRequiredString(localizedReason, name: "localized reason")
+        ))
+    } catch {
+        inputs = .failure(error)
+    }
+
     Task {
         do {
-            let context = try laContext(contextPtr)
-            let policy = try laPolicy(policyRaw)
-            let reason = try laRequiredString(localizedReason, name: "localized reason")
-
+            let (context, policy, reason) = try inputs.get()
             let success = try await context.evaluatePolicy(policy, localizedReason: reason)
             cb(success ? 1 : 0, nil, ctx)
         } catch {
@@ -38,15 +50,26 @@ public func la_context_evaluate_access_control_async(
     _ cb: @convention(c) (UInt8, UnsafePointer<CChar>?, UnsafeMutableRawPointer) -> Void,
     _ ctx: UnsafeMutableRawPointer
 ) {
+    // Resolve all pointer-derived inputs synchronously. The caller (Rust) frees
+    // `localizedReason` as soon as this function returns, and the borrowed
+    // context handle may be released before the deferred `Task` runs, so they
+    // must not be dereferenced inside the asynchronous closure.
+    let inputs: Result<(LAContext, SecAccessControl, LAAccessControlOperation, String), Error>
+    do {
+        let context = try laContext(contextPtr)
+        let accessControl = try laAccessControl(accessControlPtr)
+        let reason = try laRequiredString(localizedReason, name: "localized reason")
+        guard let operation = LAAccessControlOperation(rawValue: Int(operationRaw)) else {
+            throw LABridgeError.invalidArgument("unsupported access-control operation: \(operationRaw)")
+        }
+        inputs = .success((context, accessControl, operation, reason))
+    } catch {
+        inputs = .failure(error)
+    }
+
     Task {
         do {
-            let context = try laContext(contextPtr)
-            let accessControl = try laAccessControl(accessControlPtr)
-            let reason = try laRequiredString(localizedReason, name: "localized reason")
-            guard let operation = LAAccessControlOperation(rawValue: Int(operationRaw)) else {
-                throw LABridgeError.invalidArgument("unsupported access-control operation: \(operationRaw)")
-            }
-
+            let (context, accessControl, operation, reason) = try inputs.get()
             let success = try await context.evaluateAccessControl(
                 accessControl,
                 operation: operation,
