@@ -99,6 +99,12 @@ public func la_context_invalidate(
     }
 }
 
+@_cdecl("la_context_raw_la_context")
+public func la_context_raw_la_context(_ contextPtr: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
+    guard let context = try? laContext(contextPtr) else { return nil }
+    return Unmanaged.passUnretained(context).toOpaque()
+}
+
 @_cdecl("la_context_can_evaluate_policy")
 public func la_context_can_evaluate_policy(
     _ contextPtr: UnsafeMutableRawPointer?,

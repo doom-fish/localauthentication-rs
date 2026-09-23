@@ -11,6 +11,7 @@ extern "C" {
     pub fn la_context_new(out_context: *mut *mut c_void, error_out: *mut *mut c_char) -> i32;
     pub fn la_context_release(context: *mut c_void);
     pub fn la_context_invalidate(context: *mut c_void, error_out: *mut *mut c_char) -> i32;
+    pub fn la_context_raw_la_context(context: *mut c_void) -> *mut c_void;
 
     pub fn la_context_can_evaluate_policy(
         context: *mut c_void,

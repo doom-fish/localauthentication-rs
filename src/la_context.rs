@@ -642,6 +642,11 @@ impl LAContext {
         })
     }
 
+    #[must_use]
+    pub fn as_raw_la_context(&self) -> *mut c_void {
+        unsafe { ffi::la_context::la_context_raw_la_context(self.handle.as_ptr()) }
+    }
+
     /// Internal helper to get the raw pointer for FFI calls.
     ///
     /// Used by the async API module. This is intentionally non-public.
@@ -651,10 +656,67 @@ impl LAContext {
     }
 }
 
+impl Drop for LAContext {
+    fn drop(&mut self) {
+        let _ = self.invalidate();
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use core::ffi::{c_char, c_void};
+    use std::ffi::CStr;
+    use std::ptr::NonNull;
+
     use super::{LACompanionType, LAContext, Result};
-    use crate::{LACredential, LACredentialType, LAPolicy};
+    use crate::ffi;
+    use crate::private::OwnedHandle;
+    use crate::{LACredential, LACredentialType, LAError, LAPolicy};
+
+    unsafe extern "C" {
+        fn objc_retain(object: *mut c_void) -> *mut c_void;
+        fn object_getClassName(object: *mut c_void) -> *const c_char;
+    }
+
+    #[test]
+    fn dropping_a_context_invalidates_it() -> Result<()> {
+        let context = LAContext::new()?;
+        context.set_interaction_not_allowed(true)?;
+        let raw = context.handle.as_ptr();
+        unsafe { objc_retain(raw) };
+        let shared = LAContext {
+            handle: OwnedHandle::new(
+                NonNull::new(raw).expect("handle"),
+                ffi::la_context::la_context_release,
+            ),
+        };
+        let before = shared.can_evaluate_policy(LAPolicy::DeviceOwnerAuthentication);
+        assert!(
+            !matches!(before, Err(LAError::InvalidContext(_))),
+            "{before:?}"
+        );
+
+        drop(context);
+
+        let after = shared.can_evaluate_policy(LAPolicy::DeviceOwnerAuthentication);
+        assert!(
+            matches!(after, Err(LAError::InvalidContext(_))),
+            "{after:?}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn the_raw_context_is_the_objective_c_la_context() -> Result<()> {
+        let context = LAContext::new()?;
+        let raw = context.as_raw_la_context();
+        assert!(!raw.is_null());
+        assert_ne!(raw, context.handle.as_ptr());
+        let class_name = unsafe { CStr::from_ptr(object_getClassName(raw)) };
+        assert_eq!(class_name.to_str(), Ok("LAContext"));
+        assert_eq!(context.as_raw_la_context(), raw);
+        Ok(())
+    }
 
     #[test]
     fn property_round_trip_without_prompt() -> Result<()> {
