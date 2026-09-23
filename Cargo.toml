@@ -61,6 +61,10 @@ maintenance = { status = "actively-developed" }
 [[example]]
 name = "01_smoke"
 
+[[example]]
+name = "02_async_policy"
+required-features = ["async"]
+
 [profile.release]
 debug = "full"
 strip = "none"

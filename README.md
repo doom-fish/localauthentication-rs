@@ -2,15 +2,40 @@
 
 Safe Rust bindings for Apple's [LocalAuthentication](https://developer.apple.com/documentation/localauthentication) framework on macOS.
 
-> **Status:** v0.3.0 adds **async API support** (gated behind the `async` feature) for executor-agnostic policy and access control evaluation. The synchronous API remains at v0.2.1 coverage across `LAContext`, `LAPolicy`, `LAError`, `LACredential`, `LAAuthenticationRequirement`, `LARight`, `LARightStore`, `LAPersistedRight`, `LAPublicKey`, `LAPrivateKey`, `LASecret`, and the macOS 15 `LAEnvironment` observer/state surface.
+## Installation
+
+```toml
+[dependencies]
+apple-localauthentication = "0.4"
+```
+
+The library is imported as `localauthentication`. The optional `async` feature adds executor-agnostic futures for policy and access-control evaluation.
+
+## A successful evaluation is not a secure gate
+
+`LAContext::evaluate_policy` returns `Ok(true)` when the user authenticated, but that boolean lives in your process: a debugger or a patched binary can flip it, so gating a secret on `if evaluate_policy(..)? { .. }` does not protect the secret. Let the system enforce the check instead:
+
+- Keep the secret in a persisted right: `LARightStore::save_right_with_secret` stores it, and `LAPersistedRight::secret()` / `LASecret::load_data` only return it after the right's authorization requirement has been met. `LAPrivateKey` operations are bound to the right in the same way.
+- Or store it as a keychain item protected by a `SecAccessControl` (for example `.userPresence` or `.biometryCurrentSet` in `kSecAttrAccessControl`), and pass the evaluated context to the keychain query as `kSecUseAuthenticationContext`. `LAContext::as_raw_la_context()` returns the Objective-C `LAContext` for that purpose; keep the Rust `LAContext` alive for as long as the query uses it.
 
 ## Platform notes
 
 - The Rust crate is macOS-focused and links the system `LocalAuthentication.framework`.
-- The Swift bridge now targets **macOS 13+**.
+- Requires **macOS 13** or newer (the Swift bridge's deployment target).
 - `LAContext::domain_state()` plus the `LAEnvironment::{current_user, state, add_observer}` surface are macOS 15+ APIs.
 - Persisted-right and key APIs can require signing or entitlements; the examples and tests treat `OSStatus -34018` as an expected environment limitation.
 - `LAPrivateKey::exchange_keys_with_public_key` uses `SecKeyExchangeParameters` for the requested derived-key length and optional shared-info KDF context.
+
+## Timeouts, cancellation and dropping
+
+- The synchronous calls that wait for the framework (`LAContext::evaluate_policy`, `evaluate_access_control_raw`, `LARight` / `LAPersistedRight` authorization, the `LARightStore` operations, and the key and secret operations) wait at most `sync_timeout()`, 30 seconds by default. Change it for the whole process with `set_sync_timeout(Some(duration))`, or pass `None` to wait indefinitely. The async API never times out.
+- A timed-out call returns `LAError::TimedOut` and is cancelled: an evaluation invalidates its `LAContext` (which dismisses the prompt), an authorization that completes later is deauthorized again, and a right that is saved after the timeout is removed again. Removals cannot be undone and may still complete after a timeout.
+- Dropping an `LAContext` invalidates it, so a prompt that is still on screen is dismissed and any pending evaluation (including an async one) fails with `LAError::AppCancel`.
+
+## Secrets and errors
+
+- `LACredential` keeps its bytes in `zeroize::Zeroizing`, prints them as `<redacted>` in `Debug`, and compares them in constant time. `LASecret::load_data`, `LAPrivateKey::decrypt` and `LAPrivateKey::exchange_keys_with_public_key` return `Zeroizing<Vec<u8>>`, and the bridge wipes its copy. Copies held by the framework cannot be wiped from Rust.
+- Errors from `LAErrorDomain` map to the typed `LAError` variants, from both the synchronous and the async API. Errors from other domains (for example `NSOSStatusErrorDomain -34018` when an entitlement is missing) become `LAError::Other`, with the domain and code in the message.
 
 ## Quick start
 
@@ -73,7 +98,7 @@ The async API:
 - Works with **any** async runtime (Tokio, async-std, smol, pollster, etc.)
 - Uses callback-based Swift FFI for true async operations
 - Provides `AsyncContextExt` trait with async variants of `evaluate_policy_async` and `evaluate_access_control_async`
-- Returns futures that resolve to `Result<bool, LAError>`
+- Returns futures that resolve to `Result<bool, LAError>` with the same error variants as the synchronous API
 
 See `examples/02_async_policy.rs` for a complete example.
 
@@ -82,23 +107,23 @@ See `examples/02_async_policy.rs` for a complete example.
 The crate ships numbered examples for every logical area:
 
 - `01_smoke` — `LAContext`, policies, credentials, and domain state
-- `02_async_policy` — async policy evaluation using `AsyncLAContext` (requires `async` feature)
-- `03_policy_catalog` — policy availability across biometric and companion modes
-- `04_error_codes` — `LAError` and domain/code mapping
-- `05_credentials` — `LACredential` helpers
-- `06_authentication_requirements` — requirement builders and `LARight` construction
-- `07_rights` — right state/tag/preflight/deauthorize flow
-- `08_right_store` — shared `LARightStore` persistence entry points
-- `09_persisted_right` — `LAPersistedRight`, `LASecret`, and `LAPrivateKey`
-- `10_public_key` — `LAPublicKey` export plus `LAPrivateKey` verify/encrypt/key-exchange capability checks
-- `11_environment` — `LAEnvironment`, observer registration, and mechanism snapshots
+- `02_async_policy` — async policy evaluation using `AsyncContextExt` (requires the `async` feature; shows an authentication prompt)
+- `02_policy_catalog` — policy availability across biometric and companion modes
+- `03_error_codes` — `LAError` and domain/code mapping
+- `04_credentials` — `LACredential` helpers
+- `05_authentication_requirements` — requirement builders and `LARight` construction
+- `06_rights` — right state/tag/preflight/deauthorize flow
+- `07_right_store` — shared `LARightStore` persistence entry points
+- `08_persisted_right` — `LAPersistedRight`, `LASecret`, and `LAPrivateKey`
+- `09_public_key` — `LAPublicKey` export plus `LAPrivateKey` verify/encrypt/key-exchange capability checks
+- `10_environment` — `LAEnvironment`, observer registration, and mechanism snapshots
 
 Run the full verification matrix with:
 
 ```bash
-cargo clippy --all-targets -- -D warnings
-cargo test
-for ex in examples/*.rs; do cargo run --example "$(basename "$ex" .rs)"; done
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-features
+for ex in examples/*.rs; do name="$(basename "$ex" .rs)"; [ "$name" = 02_async_policy ] || cargo run --example "$name"; done
 ```
 
 For the header-by-header audit, see [`COVERAGE.md`](COVERAGE.md).

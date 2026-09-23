@@ -8,6 +8,8 @@ GAPS: 0
 EXEMPT: 9
 COVERAGE_PCT: 100.0%
 
+The percentage counts reachable symbols. One VERIFIED row (`evaluateAccessControl:operation:localizedReason:reply:`) is reachable only through an `unsafe fn` that takes a raw `SecAccessControlRef`.
+
 ## 🟢 VERIFIED
 | Symbol | Kind | Header | Wrapped by |
 | --- | --- | --- | --- |
@@ -15,7 +17,7 @@ COVERAGE_PCT: 100.0%
 | `LAContext.biometryType` | property | `LAContext.h` | `LAContext::biometry_type` |
 | `LAContext.canEvaluatePolicy:error:` | method | `LAContext.h` | `LAContext::can_evaluate_policy` |
 | `LAContext.domainState` | property | `LAContext.h` | `LAContext::domain_state` |
-| `LAContext.evaluateAccessControl:operation:localizedReason:reply:` | method | `LAContext.h` | `LAContext::evaluate_access_control_raw (unsafe)` |
+| `LAContext.evaluateAccessControl:operation:localizedReason:reply:` | method | `LAContext.h` | `LAContext::evaluate_access_control_raw` — an `unsafe fn` over a raw `SecAccessControlRef`, so this row is reachable but not covered by a safe API |
 | `LAContext.evaluatePolicy:localizedReason:reply:` | method | `LAContext.h` | `LAContext::evaluate_policy` |
 | `LAContext.interactionNotAllowed` | property | `LAContext.h` | `LAContext::{interaction_not_allowed, set_interaction_not_allowed}` |
 | `LAContext.invalidate` | method | `LAContext.h` | `LAContext::invalidate` |
