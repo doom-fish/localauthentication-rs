@@ -215,10 +215,10 @@ impl LAContext {
             ffi::la_context::la_context_can_evaluate_policy(
                 self.handle.as_ptr(),
                 policy.as_ffi(),
-                &mut out_can_evaluate,
-                &mut framework_error_code,
-                &mut framework_error_message,
-                &mut bridge_error,
+                &raw mut out_can_evaluate,
+                &raw mut framework_error_code,
+                &raw mut framework_error_message,
+                &raw mut bridge_error,
             )
         };
         if status != ffi::status::OK {
