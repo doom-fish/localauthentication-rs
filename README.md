@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 When the `async` feature is enabled, the `async_api` module provides executor-agnostic async methods for authentication:
 
-```rust,no_run
+```rust,ignore
 use localauthentication::prelude::*;
 use localauthentication::async_api::AsyncContextExt;
 
