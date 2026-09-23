@@ -142,7 +142,10 @@ public func la_persisted_right_authorize(
         let reason = try laRequiredString(localizedReason, name: "localized reason")
         if #available(macOS 13.0, *) {
             let right = try laPersistedRight(rightPtr)
-            try laAwait {
+            try laAwait(
+                onTimeout: { Task { await right.deauthorize() } },
+                onLateSuccess: { await right.deauthorize() }
+            ) {
                 try await right.authorize(localizedReason: reason)
             }
             return LA_OK

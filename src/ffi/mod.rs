@@ -18,6 +18,11 @@ pub mod la_public_key;
 pub mod la_right;
 pub mod la_right_store;
 
+extern "C" {
+    pub fn la_set_sync_timeout(seconds: f64);
+    pub fn la_get_sync_timeout() -> f64;
+}
+
 pub mod status {
     pub const OK: i32 = 0;
     pub const INVALID_ARGUMENT: i32 = -10_000;

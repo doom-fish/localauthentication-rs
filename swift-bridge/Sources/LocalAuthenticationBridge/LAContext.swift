@@ -141,7 +141,7 @@ public func la_context_evaluate_policy(
         let context = try laContext(contextPtr)
         let policy = try laPolicy(policyRaw)
         let reason = try laRequiredString(localizedReason, name: "localized reason")
-        let success = try laAwait {
+        let success = try laAwait(onTimeout: { context.invalidate() }) {
             try await context.evaluatePolicy(policy, localizedReason: reason)
         }
         outSuccess.pointee = success ? 1 : 0
@@ -172,7 +172,7 @@ public func la_context_evaluate_access_control(
             throw LABridgeError.invalidArgument("unsupported access-control operation: \(operationRaw)")
         }
 
-        let success = try laAwait {
+        let success = try laAwait(onTimeout: { context.invalidate() }) {
             try await context.evaluateAccessControl(
                 accessControl,
                 operation: operation,

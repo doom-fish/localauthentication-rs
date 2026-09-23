@@ -80,7 +80,9 @@ public func la_right_store_save_right(
         if #available(macOS 13.0, *) {
             let store = try laRightStore(storePtr)
             let right = try laRight(rightPtr)
-            let persisted = try laAwait {
+            let persisted = try laAwait(onLateSuccess: { persisted in
+                try? await store.removeRight(persisted)
+            }) {
                 try await store.saveRight(right, identifier: identifier)
             }
             outRight.pointee = laRetainHandle(LAPersistedRightHandle(persisted))
@@ -111,7 +113,9 @@ public func la_right_store_save_right_with_secret(
         if #available(macOS 13.0, *) {
             let store = try laRightStore(storePtr)
             let right = try laRight(rightPtr)
-            let persisted = try laAwait {
+            let persisted = try laAwait(onLateSuccess: { persisted in
+                try? await store.removeRight(persisted)
+            }) {
                 try await store.saveRight(right, identifier: identifier, secret: secret)
             }
             outRight.pointee = laRetainHandle(LAPersistedRightHandle(persisted))

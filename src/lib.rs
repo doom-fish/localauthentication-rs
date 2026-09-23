@@ -22,6 +22,7 @@ pub mod la_public_key;
 pub mod la_right;
 pub mod la_right_store;
 mod private;
+pub mod timeout;
 
 #[cfg(feature = "async")]
 pub mod async_api;
@@ -45,6 +46,7 @@ pub use la_policy::{LAPolicy, Policy};
 pub use la_public_key::{LAPublicKey, SecKeyAlgorithm, SecKeyExchangeParameters};
 pub use la_right::{LARight, LARightState};
 pub use la_right_store::LARightStore;
+pub use timeout::{set_sync_timeout, sync_timeout};
 
 /// Common imports for users of this crate.
 pub mod prelude {

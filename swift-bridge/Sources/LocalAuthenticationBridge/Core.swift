@@ -54,22 +54,58 @@ enum LABridgeError: LocalizedError {
     }
 }
 
-final class ResultHolder<Value> {
+final class LAAwaitState<Value> {
     private let lock = NSLock()
-    private var _result: Result<Value, Error>?
+    private let semaphore = DispatchSemaphore(value: 0)
+    private var result: Result<Value, Error>?
+    private var abandoned = false
 
-    var result: Result<Value, Error>? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _result
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _result = newValue
-        }
+    func complete(_ newResult: Result<Value, Error>) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !abandoned else { return false }
+        result = newResult
+        semaphore.signal()
+        return true
     }
+
+    func wait(seconds: Double) -> Result<Value, Error>? {
+        if seconds.isFinite, seconds <= laLongestFiniteTimeout {
+            _ = semaphore.wait(timeout: .now() + seconds)
+        } else {
+            semaphore.wait()
+        }
+        lock.lock()
+        defer { lock.unlock() }
+        guard let result else {
+            abandoned = true
+            return nil
+        }
+        return result
+    }
+}
+
+private let laLongestFiniteTimeout: Double = 366 * 24 * 60 * 60
+private let laDefaultSyncTimeout: Double = 30
+private let laSyncTimeoutLock = NSLock()
+private var laSyncTimeoutSeconds = laDefaultSyncTimeout
+
+func laSyncTimeout() -> Double {
+    laSyncTimeoutLock.lock()
+    defer { laSyncTimeoutLock.unlock() }
+    return laSyncTimeoutSeconds
+}
+
+@_cdecl("la_set_sync_timeout")
+public func la_set_sync_timeout(_ seconds: Double) {
+    laSyncTimeoutLock.lock()
+    defer { laSyncTimeoutLock.unlock() }
+    laSyncTimeoutSeconds = seconds.isNaN || seconds < 0 ? laDefaultSyncTimeout : seconds
+}
+
+@_cdecl("la_get_sync_timeout")
+public func la_get_sync_timeout() -> Double {
+    laSyncTimeout()
 }
 
 class LABridgeHandleBase: NSObject {}
@@ -247,30 +283,61 @@ func laCopyInt32Array(
 }
 
 func laAwait<Value>(
-    timeout: TimeInterval = 30,
+    onTimeout: @escaping () -> Void = {},
+    onLateSuccess: @escaping (Value) async -> Void = { _ in },
     _ operation: @escaping () async throws -> Value
 ) throws -> Value {
-    let semaphore = DispatchSemaphore(value: 0)
-    let holder = ResultHolder<Value>()
-
-    Task {
+    let state = LAAwaitState<Value>()
+    let task = Task {
+        let result: Result<Value, Error>
         do {
-            holder.result = .success(try await operation())
+            result = .success(try await operation())
         } catch {
-            holder.result = .failure(error)
+            result = .failure(error)
         }
-        semaphore.signal()
+        if !state.complete(result), case .success(let value) = result {
+            await onLateSuccess(value)
+        }
     }
 
-    if semaphore.wait(timeout: .now() + timeout) == .timedOut {
-        throw LABridgeError.timedOut("LocalAuthentication operation timed out")
+    let seconds = laSyncTimeout()
+    guard let result = state.wait(seconds: seconds) else {
+        task.cancel()
+        onTimeout()
+        throw LABridgeError.timedOut(
+            "LocalAuthentication operation did not finish within \(seconds) seconds and was cancelled"
+        )
     }
-
-    guard let result = holder.result else {
-        throw LABridgeError.unknown("LocalAuthentication operation completed without a result")
-    }
-
     return try result.get()
+}
+
+@_cdecl("la_bridge_probe_await")
+public func la_bridge_probe_await(
+    _ delayMilliseconds: UInt32,
+    _ lateSuccess: (@convention(c) () -> Void)?,
+    _ outTimeoutHookRan: UnsafeMutablePointer<UInt8>?,
+    _ errorOut: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+    var timeoutHookRan = false
+    defer { outTimeoutHookRan?.pointee = timeoutHookRan ? 1 : 0 }
+    do {
+        _ = try laAwait(
+            onTimeout: { timeoutHookRan = true },
+            onLateSuccess: { _ in lateSuccess?() }
+        ) {
+            await withCheckedContinuation { continuation in
+                DispatchQueue.global().asyncAfter(
+                    deadline: .now() + .milliseconds(Int(delayMilliseconds))
+                ) {
+                    continuation.resume()
+                }
+            }
+            return true
+        }
+        return LA_OK
+    } catch {
+        return laFail(error, errorOut)
+    }
 }
 
 @inline(__always)
