@@ -9,7 +9,7 @@ description = "Safe Rust bindings for Apple's LocalAuthentication framework — 
 authors = ["Per Johansson <per@doom.fish>"]
 keywords = ["localauthentication", "biometrics", "touchid", "faceid", "macos"]
 categories = ["api-bindings", "os::macos-apis"]
-rust-version = "1.76"
+rust-version = "1.82"
 readme = "README.md"
 build = "build.rs"
 include = [
@@ -43,7 +43,7 @@ async = []
 
 [dependencies]
 libc = "0.2"
-doom-fish-utils = { path = "../doom-fish-utils", version = ">=0.1, <0.4" }
+doom-fish-utils = { path = "../doom-fish-utils", version = ">=0.4.1, <0.5" }
 
 [dev-dependencies]
 pollster = "0.3"
