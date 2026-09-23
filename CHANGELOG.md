@@ -1,5 +1,75 @@
 # Changelog
 
+All notable changes to `apple-localauthentication` are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.4.0] - Unreleased
+
+### Security
+
+- `LACredential` no longer derives `Debug`, `Clone` and `PartialEq` over the
+  raw password or PIN. Its bytes live in `Zeroizing<Vec<u8>>`, `Debug` prints
+  them as `<redacted>`, and equality is constant-time.
+- A synchronous call that timed out left the Swift task running: the prompt
+  stayed up, a later success was dropped, and `LARightStore::save_right*`
+  could still persist a right after Rust had seen `TimedOut`. Timed-out calls
+  are now cancelled; an evaluation invalidates its `LAContext`, an
+  authorization that completes later is deauthorized, and a right saved after
+  the timeout is removed again.
+- The README now explains that a successful `evaluate_policy` is not a secure
+  gate and how to bind secrets to the system check (persisted-right secrets
+  and keys, or keychain access control with the evaluated context).
+- `LASecret::load_data`, `LAPrivateKey::decrypt` and
+  `LAPrivateKey::exchange_keys_with_public_key` return `Zeroizing<Vec<u8>>`,
+  and the bridge wipes its copy before freeing it.
+
+### Fixed
+
+- Errors from domains other than `LAErrorDomain` were read as `LAError` codes
+  (an `NSOSStatusErrorDomain -2` became `UserCancel`), codes outside `Int32`
+  aborted the process, and an `NSError` with code 0 read as success. Foreign
+  errors now become `LAError::Other` with the domain and code in the message.
+- The async API reports the same typed `LAError` variants as the synchronous
+  API instead of `BridgeFailed(String)` for every failure.
+- `evaluate_policy_async` and `evaluate_access_control_async` leaked their
+  completion when the reason contained a NUL byte.
+- Dropping an `LAContext` invalidates it, so a prompt still on screen (after a
+  timeout, or while an async evaluation is pending) is dismissed.
+- Bridge handles are type-checked, so passing the wrong kind of handle returns
+  `InvalidArgument` instead of confusing types.
+- The `LARight` and `LAPersistedRight` state conversions no longer trap.
+- The `02_async_policy` example requires the `async` feature, so building
+  without features no longer fails.
+
+### Changed
+
+- **Breaking:** `LASecret::load_data`, `LAPrivateKey::decrypt` and
+  `LAPrivateKey::exchange_keys_with_public_key` return `Zeroizing<Vec<u8>>`.
+- **Breaking:** `LACredential` no longer implements a field-wise `Debug`;
+  `PartialEq` compares the bytes in constant time.
+- **Breaking:** a timed-out `evaluate_policy` or `evaluate_access_control_raw`
+  invalidates the `LAContext`, and dropping an `LAContext` invalidates it.
+- `doom-fish-utils` requirement is now `>=0.4.1, <0.5`; `rust-version` is now
+  1.82.
+- New dependency `zeroize` (`>=1.6, <1.9`; 1.9 needs Rust 1.85).
+
+### Added
+
+- `set_sync_timeout(Option<Duration>)` and `sync_timeout()` to configure how
+  long the synchronous calls wait (default 30 s; `None` waits indefinitely).
+- `LAContext::as_raw_la_context()`, the borrowed Objective-C `LAContext`, for
+  keychain queries that use `kSecUseAuthenticationContext`.
+
+## [0.3.5] - 2026-06-06
+
+### Fixed
+
+- Null-checked the localized reason in the async evaluations, guarded the
+  environment-observer release trampoline, and removed the vestigial Swift
+  bridge module map.
+
 ## [0.3.4] - 2026-05-20
 
 - Widen `doom-fish-utils` dependency bound to `<0.4` so the 0.3.x SPSC-ring release resolves cleanly. No source changes.
