@@ -84,7 +84,7 @@ public func la_persisted_right_get_state(
         }
         if #available(macOS 13.0, *) {
             let right = try laPersistedRight(rightPtr)
-            outState.pointee = Int32(right.state.rawValue)
+            outState.pointee = Int32(clamping: right.state.rawValue)
             return LA_OK
         }
         throw LABridgeError.bridgeFailed("LAPersistedRight requires macOS 13.0")

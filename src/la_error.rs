@@ -194,8 +194,68 @@ pub(crate) const fn from_status_message(status: i32, message: String) -> LAError
 
 #[cfg(test)]
 mod tests {
-    use super::LAError;
+    use core::ffi::c_char;
+    use std::ffi::CString;
+    use std::ptr;
+
+    use super::{from_status, LAError, LA_ERROR_DOMAIN};
     use crate::ffi;
+
+    unsafe extern "C" {
+        fn la_bridge_status_for_error(
+            domain: *const c_char,
+            code: isize,
+            error_out: *mut *mut c_char,
+        ) -> i32;
+    }
+
+    fn bridged(domain: &str, code: isize) -> LAError {
+        let domain = CString::new(domain).expect("domain");
+        let mut error = ptr::null_mut();
+        let status = unsafe { la_bridge_status_for_error(domain.as_ptr(), code, &raw mut error) };
+        from_status(status, error)
+    }
+
+    #[test]
+    fn la_domain_codes_map_to_typed_variants() {
+        assert!(matches!(
+            bridged(LA_ERROR_DOMAIN, -2),
+            LAError::UserCancel(message) if message == "synthetic error"
+        ));
+        assert!(matches!(
+            bridged(LA_ERROR_DOMAIN, -8),
+            LAError::BiometryLockout(_)
+        ));
+        assert!(matches!(
+            bridged(LA_ERROR_DOMAIN, -1004),
+            LAError::NotInteractive(_)
+        ));
+    }
+
+    #[test]
+    fn foreign_domain_codes_never_enter_the_la_code_space() {
+        let error = bridged("NSOSStatusErrorDomain", -2);
+        assert_eq!(error.code(), ffi::status::UNKNOWN);
+        assert!(matches!(error, LAError::Other { .. }), "{error:?}");
+        assert!(
+            error
+                .message()
+                .contains("NSOSStatusErrorDomain error -2: synthetic error"),
+            "{error:?}"
+        );
+
+        let error = bridged("NSCocoaErrorDomain", isize::MAX);
+        assert_eq!(error.code(), ffi::status::UNKNOWN);
+        assert!(error.message().contains(&isize::MAX.to_string()));
+    }
+
+    #[test]
+    fn unusable_la_domain_codes_become_unknown() {
+        for code in [0, -10_000, -10_002, isize::MIN] {
+            let error = bridged(LA_ERROR_DOMAIN, code);
+            assert_eq!(error.code(), ffi::status::UNKNOWN, "{code}: {error:?}");
+        }
+    }
 
     #[test]
     fn maps_common_la_error_codes() {

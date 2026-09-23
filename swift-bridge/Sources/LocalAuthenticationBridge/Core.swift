@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Security
 
 let LA_OK: Int32 = 0
@@ -86,21 +87,38 @@ func laWriteError(
     errorOut?.pointee = laCString(message)
 }
 
+func laStatus(for error: Error) -> Int32 {
+    if let bridgeError = error as? LABridgeError {
+        return bridgeError.statusCode
+    }
+    let nsError = error as NSError
+    guard nsError.domain == LAErrorDomain,
+          let code = Int32(exactly: nsError.code),
+          code != LA_OK,
+          !(LA_UNKNOWN...LA_INVALID_ARGUMENT).contains(code) else {
+        return LA_UNKNOWN
+    }
+    return code
+}
+
+func laDescription(for error: Error) -> String {
+    if let bridgeError = error as? LABridgeError {
+        return bridgeError.localizedDescription
+    }
+    let nsError = error as NSError
+    guard nsError.domain != LAErrorDomain else {
+        return nsError.localizedDescription
+    }
+    return "\(nsError.domain) error \(nsError.code): \(nsError.localizedDescription)"
+}
+
 @inline(__always)
 func laFail(
     _ error: Error,
     _ errorOut: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> Int32 {
-    let status: Int32
-    if let bridgeError = error as? LABridgeError {
-        status = bridgeError.statusCode
-        laWriteError(errorOut, bridgeError.localizedDescription)
-    } else {
-        let nsError = error as NSError
-        status = Int32(nsError.code)
-        laWriteError(errorOut, nsError.localizedDescription)
-    }
-    return status
+    laWriteError(errorOut, laDescription(for: error))
+    return laStatus(for: error)
 }
 
 @inline(__always)
@@ -163,8 +181,8 @@ func laWriteFrameworkError(
     _ outCode: UnsafeMutablePointer<Int32>?,
     _ outMessage: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) {
-    outCode?.pointee = Int32(error?.code ?? 0)
-    outMessage?.pointee = error.flatMap { laCString($0.localizedDescription) }
+    outCode?.pointee = error.map(laStatus(for:)) ?? LA_OK
+    outMessage?.pointee = error.flatMap { laCString(laDescription(for: $0)) }
 }
 
 @inline(__always)
@@ -259,4 +277,21 @@ func laAwait<Value>(
 func laSecKeyAlgorithm(_ rawValue: UnsafePointer<CChar>?) throws -> SecKeyAlgorithm {
     let rawName = try laRequiredString(rawValue, name: "algorithm")
     return SecKeyAlgorithm(rawValue: rawName as CFString)
+}
+
+@_cdecl("la_bridge_status_for_error")
+public func la_bridge_status_for_error(
+    _ domain: UnsafePointer<CChar>?,
+    _ code: Int,
+    _ errorOut: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+    guard let domain else {
+        return laFail(LABridgeError.invalidArgument("missing error domain"), errorOut)
+    }
+    let error = NSError(
+        domain: String(cString: domain),
+        code: code,
+        userInfo: [NSLocalizedDescriptionKey: "synthetic error"]
+    )
+    return laFail(error, errorOut)
 }

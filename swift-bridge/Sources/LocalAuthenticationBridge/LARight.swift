@@ -71,7 +71,7 @@ public func la_right_get_state(
         }
         if #available(macOS 13.0, *) {
             let right = try laRight(rightPtr)
-            outState.pointee = Int32(right.state.rawValue)
+            outState.pointee = Int32(clamping: right.state.rawValue)
             return LA_OK
         }
         throw LABridgeError.bridgeFailed("LARight requires macOS 13.0")
