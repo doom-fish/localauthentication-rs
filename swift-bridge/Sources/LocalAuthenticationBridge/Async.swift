@@ -8,7 +8,7 @@ public func la_context_evaluate_policy_async(
     _ contextPtr: UnsafeMutableRawPointer?,
     _ policyRaw: Int32,
     _ localizedReason: UnsafePointer<CChar>?,
-    _ cb: @convention(c) (UInt8, UnsafePointer<CChar>?, UnsafeMutableRawPointer) -> Void,
+    _ cb: @convention(c) (UInt8, Int32, UnsafePointer<CChar>?, UnsafeMutableRawPointer) -> Void,
     _ ctx: UnsafeMutableRawPointer
 ) {
     // Resolve all pointer-derived inputs synchronously. The caller (Rust) frees
@@ -30,10 +30,10 @@ public func la_context_evaluate_policy_async(
         do {
             let (context, policy, reason) = try inputs.get()
             let success = try await context.evaluatePolicy(policy, localizedReason: reason)
-            cb(success ? 1 : 0, nil, ctx)
+            cb(success ? 1 : 0, LA_OK, nil, ctx)
         } catch {
-            error.localizedDescription.withCString { errorCString in
-                cb(0, errorCString, ctx)
+            laDescription(for: error).withCString { errorCString in
+                cb(0, laStatus(for: error), errorCString, ctx)
             }
         }
     }
@@ -47,7 +47,7 @@ public func la_context_evaluate_access_control_async(
     _ accessControlPtr: UnsafeRawPointer?,
     _ operationRaw: Int32,
     _ localizedReason: UnsafePointer<CChar>?,
-    _ cb: @convention(c) (UInt8, UnsafePointer<CChar>?, UnsafeMutableRawPointer) -> Void,
+    _ cb: @convention(c) (UInt8, Int32, UnsafePointer<CChar>?, UnsafeMutableRawPointer) -> Void,
     _ ctx: UnsafeMutableRawPointer
 ) {
     // Resolve all pointer-derived inputs synchronously. The caller (Rust) frees
@@ -75,10 +75,10 @@ public func la_context_evaluate_access_control_async(
                 operation: operation,
                 localizedReason: reason
             )
-            cb(success ? 1 : 0, nil, ctx)
+            cb(success ? 1 : 0, LA_OK, nil, ctx)
         } catch {
-            error.localizedDescription.withCString { errorCString in
-                cb(0, errorCString, ctx)
+            laDescription(for: error).withCString { errorCString in
+                cb(0, laStatus(for: error), errorCString, ctx)
             }
         }
     }

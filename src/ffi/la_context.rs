@@ -161,7 +161,7 @@ extern "C" {
         context: *mut c_void,
         policy: i32,
         localized_reason: *const c_char,
-        cb: extern "C" fn(u8, *const c_char, *mut c_void),
+        cb: extern "C" fn(u8, i32, *const c_char, *mut c_void),
         ctx: *mut c_void,
     );
 
@@ -170,7 +170,7 @@ extern "C" {
         access_control: *const c_void,
         operation: i32,
         localized_reason: *const c_char,
-        cb: extern "C" fn(u8, *const c_char, *mut c_void),
+        cb: extern "C" fn(u8, i32, *const c_char, *mut c_void),
         ctx: *mut c_void,
     );
 }

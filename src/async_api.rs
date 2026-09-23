@@ -4,11 +4,11 @@
 //! The async API is **executor-agnostic** and works with any async runtime (Tokio, async-std, smol, etc.).
 
 use crate::la_context::LAContext;
-use crate::la_error::Result;
+use crate::la_error::{LAError, Result};
 use crate::la_policy::LAPolicy;
 use doom_fish_utils::completion::{error_from_cstr, AsyncCompletion, AsyncCompletionFuture};
 use doom_fish_utils::panic_safe::catch_user_panic;
-use std::ffi::c_void;
+use std::ffi::{c_char, c_void};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -17,39 +17,28 @@ use std::task::{Context, Poll};
 // Callbacks for async operations
 // ============================================================================
 
-extern "C" fn evaluate_policy_callback(
-    success: u8,
-    error: *const i8,
-    user_data: *mut c_void,
-) {
-    catch_user_panic("evaluate_policy_callback", || {
-        if error.is_null() {
-            // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
-            unsafe { AsyncCompletion::complete_ok(user_data, success != 0) };
-        } else {
-            // SAFETY: error is a valid C string from Swift bridge
-            let error_msg = unsafe { error_from_cstr(error) };
-            // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
-            unsafe { AsyncCompletion::<bool>::complete_err(user_data, error_msg) };
-        }
-    });
-}
+type EvaluationResult = Result<bool>;
 
-extern "C" fn evaluate_access_control_callback(
+extern "C" fn evaluation_callback(
     success: u8,
-    error: *const i8,
+    status: i32,
+    error: *const c_char,
     user_data: *mut c_void,
 ) {
-    catch_user_panic("evaluate_access_control_callback", || {
-        if error.is_null() {
-            // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
-            unsafe { AsyncCompletion::complete_ok(user_data, success != 0) };
+    catch_user_panic("evaluation_callback", || {
+        let result = if status == crate::ffi::status::OK {
+            Ok(success != 0)
         } else {
-            // SAFETY: error is a valid C string from Swift bridge
-            let error_msg = unsafe { error_from_cstr(error) };
-            // SAFETY: user_data points to a valid AsyncCompletion<bool> created by AsyncCompletion::create()
-            unsafe { AsyncCompletion::<bool>::complete_err(user_data, error_msg) };
-        }
+            let message = if error.is_null() {
+                String::new()
+            } else {
+                // SAFETY: error is a valid C string from Swift bridge
+                unsafe { error_from_cstr(error) }
+            };
+            Err(LAError::from_code_message(status, message))
+        };
+        // SAFETY: user_data points to a valid AsyncCompletion<EvaluationResult> created by AsyncCompletion::create()
+        unsafe { AsyncCompletion::<EvaluationResult>::complete_ok(user_data, result) };
     });
 }
 
@@ -59,7 +48,7 @@ extern "C" fn evaluate_access_control_callback(
 
 /// Future for async policy evaluation
 pub struct AsyncPolicyEvaluation {
-    inner: AsyncCompletionFuture<bool>,
+    inner: AsyncCompletionFuture<EvaluationResult>,
 }
 
 impl std::fmt::Debug for AsyncPolicyEvaluation {
@@ -73,15 +62,17 @@ impl Future for AsyncPolicyEvaluation {
     type Output = Result<bool>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.inner)
-            .poll(cx)
-            .map(|r| r.map_err(crate::la_error::LAError::BridgeFailed))
+        Pin::new(&mut self.inner).poll(cx).map(|result| {
+            result
+                .map_err(LAError::BridgeFailed)
+                .and_then(|result| result)
+        })
     }
 }
 
 /// Future for async access control evaluation
 pub struct AsyncAccessControlEvaluation {
-    inner: AsyncCompletionFuture<bool>,
+    inner: AsyncCompletionFuture<EvaluationResult>,
 }
 
 impl std::fmt::Debug for AsyncAccessControlEvaluation {
@@ -95,9 +86,11 @@ impl Future for AsyncAccessControlEvaluation {
     type Output = Result<bool>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.inner)
-            .poll(cx)
-            .map(|r| r.map_err(crate::la_error::LAError::BridgeFailed))
+        Pin::new(&mut self.inner).poll(cx).map(|result| {
+            result
+                .map_err(LAError::BridgeFailed)
+                .and_then(|result| result)
+        })
     }
 }
 
@@ -155,10 +148,10 @@ impl AsyncContextExt for LAContext {
             ));
         }
 
-        let (future, ctx) = AsyncCompletion::create();
         let reason_cstring = std::ffi::CString::new(localized_reason).map_err(|_| {
-            crate::la_error::LAError::InvalidArgument("localized reason contains null byte".to_owned())
+            LAError::InvalidArgument("localized reason contains null byte".to_owned())
         })?;
+        let (future, ctx) = AsyncCompletion::create();
 
         let context_ptr = self.as_ptr();
 
@@ -167,7 +160,7 @@ impl AsyncContextExt for LAContext {
                 context_ptr,
                 policy.as_ffi(),
                 reason_cstring.as_ptr(),
-                evaluate_policy_callback,
+                evaluation_callback,
                 ctx,
             );
         }
@@ -205,10 +198,10 @@ impl AsyncContextExt for LAContext {
             ));
         }
 
-        let (future, ctx) = AsyncCompletion::create();
         let reason_cstring = std::ffi::CString::new(localized_reason).map_err(|_| {
-            crate::la_error::LAError::InvalidArgument("localized reason contains null byte".to_owned())
+            LAError::InvalidArgument("localized reason contains null byte".to_owned())
         })?;
+        let (future, ctx) = AsyncCompletion::create();
 
         let context_ptr = self.as_ptr();
 
@@ -218,7 +211,7 @@ impl AsyncContextExt for LAContext {
                 access_control,
                 operation.raw_value(),
                 reason_cstring.as_ptr(),
-                evaluate_access_control_callback,
+                evaluation_callback,
                 ctx,
             );
         }
