@@ -1,5 +1,9 @@
 //! Application-provided credential helpers for `LAContext`.
 
+use std::fmt;
+
+use zeroize::Zeroizing;
+
 use crate::ffi;
 
 /// Credential kinds accepted by `LAContext::set_credential`.
@@ -27,10 +31,10 @@ impl LACredentialType {
 }
 
 /// Owned credential bytes paired with their `LACredentialType`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct LACredential {
     credential_type: LACredentialType,
-    bytes: Vec<u8>,
+    bytes: Zeroizing<Vec<u8>>,
 }
 
 impl LACredential {
@@ -39,7 +43,7 @@ impl LACredential {
     pub fn new(credential_type: LACredentialType, bytes: impl Into<Vec<u8>>) -> Self {
         Self {
             credential_type,
-            bytes: bytes.into(),
+            bytes: Zeroizing::new(bytes.into()),
         }
     }
 
@@ -66,4 +70,35 @@ impl LACredential {
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }
+}
+
+impl fmt::Debug for LACredential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LACredential")
+            .field("credential_type", &self.credential_type)
+            .field("bytes", &"<redacted>")
+            .finish()
+    }
+}
+
+impl PartialEq for LACredential {
+    fn eq(&self, other: &Self) -> bool {
+        let same_bytes = constant_time_eq(&self.bytes, &other.bytes);
+        same_bytes && self.credential_type == other.credential_type
+    }
+}
+
+impl Eq for LACredential {}
+
+fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let difference = left
+        .iter()
+        .zip(right)
+        .fold(0_u8, |difference, (left, right)| {
+            difference | (left ^ right)
+        });
+    std::hint::black_box(difference) == 0
 }

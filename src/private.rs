@@ -5,6 +5,7 @@ use std::ptr;
 use std::ptr::NonNull;
 
 use libc::free;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::ffi;
 use crate::la_error::{
@@ -194,6 +195,28 @@ where
     }
 
     Ok(take_owned_buffer(out, out_len))
+}
+
+pub fn bridge_secret_bytes<F>(call: F) -> Result<Zeroizing<Vec<u8>>>
+where
+    F: FnOnce(*mut *mut u8, *mut usize, *mut *mut c_char) -> i32,
+{
+    let mut out = ptr::null_mut();
+    let mut out_len = 0_usize;
+    let mut error = ptr::null_mut();
+
+    let status = call(&raw mut out, &raw mut out_len, &raw mut error);
+    if status != ffi::status::OK {
+        return Err(from_status(status, error));
+    }
+    if out.is_null() {
+        return Ok(Zeroizing::new(Vec::new()));
+    }
+
+    let secret = Zeroizing::new(unsafe { std::slice::from_raw_parts(out, out_len) }.to_vec());
+    unsafe { std::slice::from_raw_parts_mut(out, out_len) }.zeroize();
+    unsafe { free(out.cast()) };
+    Ok(secret)
 }
 
 pub fn bridge_opt_bytes<F>(call: F) -> Result<Option<Vec<u8>>>

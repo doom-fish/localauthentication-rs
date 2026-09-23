@@ -1,12 +1,14 @@
 //! `LAPersistedRight`, `LAPrivateKey`, and `LASecret` wrappers.
 
+use zeroize::Zeroizing;
+
 use crate::ffi;
 use crate::la_error::{LAError, Result};
 use crate::la_public_key::{LAPublicKey, SecKeyAlgorithm, SecKeyExchangeParameters};
 use crate::la_right::LARightState;
 use crate::private::{
-    bridge_bool, bridge_bytes, bridge_i32, bridge_i64, bridge_ptr, bridge_unit, cstring,
-    OwnedHandle,
+    bridge_bool, bridge_bytes, bridge_i32, bridge_i64, bridge_ptr, bridge_secret_bytes,
+    bridge_unit, cstring, OwnedHandle,
 };
 
 /// Managed wrapper around Apple's `LAPersistedRight`.
@@ -178,8 +180,8 @@ impl LASecret {
     /// # Errors
     ///
     /// Returns a mapped framework or bridge error if loading fails.
-    pub fn load_data(&self) -> Result<Vec<u8>> {
-        bridge_bytes(|out, out_len, error_out| unsafe {
+    pub fn load_data(&self) -> Result<Zeroizing<Vec<u8>>> {
+        bridge_secret_bytes(|out, out_len, error_out| unsafe {
             ffi::la_persisted_right::la_secret_load_data(
                 self.handle.as_ptr(),
                 out,
@@ -279,9 +281,9 @@ impl LAPrivateKey {
     /// # Errors
     ///
     /// Returns a mapped framework or bridge error if decryption fails.
-    pub fn decrypt(&self, data: &[u8], algorithm: &SecKeyAlgorithm) -> Result<Vec<u8>> {
+    pub fn decrypt(&self, data: &[u8], algorithm: &SecKeyAlgorithm) -> Result<Zeroizing<Vec<u8>>> {
         let algorithm = cstring(algorithm.raw_name())?;
-        bridge_bytes(|out, out_len, error_out| unsafe {
+        bridge_secret_bytes(|out, out_len, error_out| unsafe {
             ffi::la_persisted_right::la_private_key_decrypt_data(
                 self.handle.as_ptr(),
                 data.as_ptr(),
@@ -321,7 +323,7 @@ impl LAPrivateKey {
         public_key: &[u8],
         algorithm: &SecKeyAlgorithm,
         parameters: &SecKeyExchangeParameters,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<Zeroizing<Vec<u8>>> {
         let algorithm = cstring(algorithm.raw_name())?;
         let requested_size = parameters
             .requested_size_value()
@@ -338,7 +340,7 @@ impl LAPrivateKey {
         let shared_info_len = shared_info.map_or(0, <[u8]>::len);
         let has_shared_info = u8::from(shared_info.is_some());
 
-        bridge_bytes(|out, out_len, error_out| unsafe {
+        bridge_secret_bytes(|out, out_len, error_out| unsafe {
             ffi::la_persisted_right::la_private_key_exchange_keys_with_public_key(
                 self.handle.as_ptr(),
                 public_key.as_ptr(),
