@@ -707,6 +707,21 @@ mod tests {
     }
 
     #[test]
+    fn handles_of_another_type_are_rejected() -> Result<()> {
+        let right = crate::LARight::new()?;
+        let mut error = std::ptr::null_mut();
+        let status =
+            unsafe { ffi::la_context::la_context_invalidate(right.as_ptr(), &raw mut error) };
+        let error = crate::la_error::from_status(status, error);
+        assert!(
+            matches!(&error, LAError::InvalidArgument(message) if message.contains("LAContext")),
+            "{error:?}"
+        );
+        assert!(right.check_can_authorize().is_ok() || right.state().is_ok());
+        Ok(())
+    }
+
+    #[test]
     fn the_raw_context_is_the_objective_c_la_context() -> Result<()> {
         let context = LAContext::new()?;
         let raw = context.as_raw_la_context();

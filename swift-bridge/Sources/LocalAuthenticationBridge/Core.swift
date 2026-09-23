@@ -171,8 +171,11 @@ func laBorrowHandle<T: LABridgeHandleBase>(
     guard let ptr else {
         throw LABridgeError.invalidArgument("missing `\(name)` handle")
     }
-    let typed = ptr.assumingMemoryBound(to: T.self)
-    return Unmanaged<T>.fromOpaque(UnsafeRawPointer(typed)).takeUnretainedValue()
+    let object = Unmanaged<LABridgeHandleBase>.fromOpaque(ptr).takeUnretainedValue()
+    guard let typed = object as? T else {
+        throw LABridgeError.invalidArgument("handle is not a `\(name)` handle")
+    }
+    return typed
 }
 
 @inline(__always)
