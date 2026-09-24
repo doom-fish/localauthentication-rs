@@ -16,6 +16,7 @@ fn public_key_operations_are_accessible_when_storage_succeeds(
             return Ok(());
         }
     };
+    let saved = common::RemoveOnDrop::new(&store, &identifier);
 
     let public_key = persisted.public_key()?;
     let sign = SecKeyAlgorithm::ecdsa_signature_message_x962_sha256();
@@ -31,6 +32,7 @@ fn public_key_operations_are_accessible_when_storage_succeeds(
         .can_exchange_keys_using(&SecKeyAlgorithm::ecdh_key_exchange_cofactor_x963_sha256())?;
 
     store.remove_right(&persisted)?;
+    saved.disarm();
     Ok(())
 }
 
@@ -50,14 +52,15 @@ fn private_key_exchange_is_accessible_when_storage_succeeds(
             return Ok(());
         }
     };
+    let first_saved = common::RemoveOnDrop::new(&store, &first_identifier);
     let second = match store.save_right(&second_right, &second_identifier) {
         Ok(persisted) => persisted,
         Err(error) => {
-            let _ = store.remove_right(&first);
             eprintln!("skipping live key-exchange assertions: {error}");
             return Ok(());
         }
     };
+    let second_saved = common::RemoveOnDrop::new(&store, &second_identifier);
 
     let algorithm = SecKeyAlgorithm::ecdh_key_exchange_cofactor_x963_sha256();
     let parameters = SecKeyExchangeParameters::with_requested_size(32)
@@ -94,6 +97,8 @@ fn private_key_exchange_is_accessible_when_storage_succeeds(
     }
 
     store.remove_right(&first)?;
+    first_saved.disarm();
     store.remove_right(&second)?;
+    second_saved.disarm();
     Ok(())
 }

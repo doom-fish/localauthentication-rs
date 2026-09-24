@@ -16,11 +16,13 @@ fn persisted_right_secret_and_tag_are_accessible_when_storage_succeeds(
             return Ok(());
         }
     };
+    let saved = common::RemoveOnDrop::new(&store, &identifier);
 
     persisted.set_tag(123)?;
     assert_eq!(persisted.tag()?, 123);
     assert_eq!(persisted.secret()?.load_data()?.as_slice(), b"top-secret");
     let _ = persisted.check_can_authorize();
     store.remove_right(&persisted)?;
+    saved.disarm();
     Ok(())
 }
