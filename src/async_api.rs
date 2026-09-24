@@ -8,6 +8,7 @@ use crate::la_error::{LAError, Result};
 use crate::la_policy::LAPolicy;
 use doom_fish_utils::completion::{error_from_cstr, AsyncCompletion, AsyncCompletionFuture};
 use doom_fish_utils::panic_safe::catch_user_panic;
+use security::AccessControl;
 use std::ffi::{c_char, c_void};
 use std::future::Future;
 use std::pin::Pin;
@@ -113,16 +114,12 @@ pub trait AsyncContextExt {
 
     /// Asynchronously evaluate an access control
     ///
-    /// # Safety
-    ///
-    /// The `access_control` pointer must be a valid, properly initialized `SecAccessControl` reference.
-    ///
     /// # Errors
     ///
-    /// Returns an error if the access control is null, localized reason is empty, or contains a null byte.
-    unsafe fn evaluate_access_control_async(
+    /// Returns an error if the localized reason is empty or contains a null byte.
+    fn evaluate_access_control_async(
         &self,
-        access_control: *const c_void,
+        access_control: &AccessControl,
         operation: crate::la_context::LAAccessControlOperation,
         localized_reason: &str,
     ) -> Result<AsyncAccessControlEvaluation>;
@@ -174,24 +171,15 @@ impl AsyncContextExt for LAContext {
     ///
     /// # Arguments
     ///
-    /// * `access_control` - A `SecAccessControl` reference (as raw pointer)
+    /// * `access_control` - The `SecAccessControl` to evaluate
     /// * `operation` - The access control operation to evaluate
     /// * `localized_reason` - A localized reason shown to the user
-    ///
-    /// # Safety
-    ///
-    /// The `access_control` pointer must be a valid, properly initialized `SecAccessControl` reference.
-    unsafe fn evaluate_access_control_async(
+    fn evaluate_access_control_async(
         &self,
-        access_control: *const c_void,
+        access_control: &AccessControl,
         operation: crate::la_context::LAAccessControlOperation,
         localized_reason: &str,
     ) -> Result<AsyncAccessControlEvaluation> {
-        if access_control.is_null() {
-            return Err(crate::la_error::LAError::InvalidArgument(
-                "access control pointer must not be null".to_owned(),
-            ));
-        }
         if localized_reason.is_empty() {
             return Err(crate::la_error::LAError::InvalidArgument(
                 "localized reason must not be empty".to_owned(),
@@ -208,7 +196,7 @@ impl AsyncContextExt for LAContext {
         unsafe {
             crate::ffi::la_context::la_context_evaluate_access_control_async(
                 context_ptr,
-                access_control,
+                access_control.as_ptr().cast_const(),
                 operation.raw_value(),
                 reason_cstring.as_ptr(),
                 evaluation_callback,

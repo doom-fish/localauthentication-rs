@@ -6,7 +6,7 @@ GAPS: 0
 EXEMPT: 9
 COVERAGE_PCT: 100.0%
 
-The percentage counts reachable symbols. One VERIFIED row (`evaluateAccessControl:operation:localizedReason:reply:`) is reachable only through an `unsafe fn` that takes a raw `SecAccessControlRef`.
+The percentage counts reachable symbols.
 
 All 139 public symbols from LocalAuthentication.framework headers (macOS 26.2) were enumerated via `@interface`, `@property`, `@protocol`, `typedef enum`, `typedef struct`, `FOUNDATION_EXPORT`, `extern const`, and method declarations across LAContext.h, LABiometryType.h, LACompanionType.h, LAError.h, LARequirement.h, LARight.h, LARightStore.h, LAPersistedRight.h, LAPrivateKey.h, LAPublicKey.h, LADomainState.h, LAEnvironment.h, and LAEnvironmentMechanism.h. All EXEMPT entries were re-validated against SDK availability macros; all 9 deprecated macOS items remain deprecated in 26.2.
 
@@ -17,7 +17,7 @@ All 139 public symbols from LocalAuthentication.framework headers (macOS 26.2) w
 | `LAContext.biometryType` | property | `LAContext.h` | `LAContext::biometry_type` |
 | `LAContext.canEvaluatePolicy:error:` | method | `LAContext.h` | `LAContext::can_evaluate_policy` |
 | `LAContext.domainState` | property | `LAContext.h` | `LAContext::domain_state` |
-| `LAContext.evaluateAccessControl:operation:localizedReason:reply:` | method | `LAContext.h` | `LAContext::evaluate_access_control_raw` — an `unsafe fn` over a raw `SecAccessControlRef`, so this row is reachable but not covered by a safe API |
+| `LAContext.evaluateAccessControl:operation:localizedReason:reply:` | method | `LAContext.h` | `LAContext::evaluate_access_control`, `AsyncContextExt::evaluate_access_control_async` (take `security-rs`'s `AccessControl`) |
 | `LAContext.evaluatePolicy:localizedReason:reply:` | method | `LAContext.h` | `LAContext::evaluate_policy` |
 | `LAContext.interactionNotAllowed` | property | `LAContext.h` | `LAContext::{interaction_not_allowed, set_interaction_not_allowed}` |
 | `LAContext.invalidate` | method | `LAContext.h` | `LAContext::invalidate` |

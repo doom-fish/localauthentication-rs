@@ -16,7 +16,26 @@ The library is imported as `localauthentication`. The optional `async` feature a
 `LAContext::evaluate_policy` returns `Ok(true)` when the user authenticated, but that boolean lives in your process: a debugger or a patched binary can flip it, so gating a secret on `if evaluate_policy(..)? { .. }` does not protect the secret. Let the system enforce the check instead:
 
 - Keep the secret in a persisted right: `LARightStore::save_right_with_secret` stores it, and `LAPersistedRight::secret()` / `LASecret::load_data` only return it after the right's authorization requirement has been met. `LAPrivateKey` operations are bound to the right in the same way.
-- Or store it as a keychain item protected by a `SecAccessControl` (for example `.userPresence` or `.biometryCurrentSet` in `kSecAttrAccessControl`), and pass the evaluated context to the keychain query as `kSecUseAuthenticationContext`. `LAContext::as_raw_la_context()` returns the Objective-C `LAContext` for that purpose; keep the Rust `LAContext` alive for as long as the query uses it.
+- Or store it as a keychain item protected by an access control, and let the keychain check it. With `security-rs`, create an `AccessControl` (for example `AccessControlFlags::USER_PRESENCE` or `BIOMETRY_CURRENT_SET`, re-exported by this crate), attach it with `KeychainOptions::access_control`, and pass the context to the query with `KeychainOptions::authentication_context(context.as_raw_la_context())` (an `unsafe fn`: the pointer must be a live `LAContext`), which sets `kSecUseAuthenticationContext`. `LAContext::evaluate_access_control` evaluates the same `AccessControl` ahead of time, so the keychain query does not prompt again. Keep the Rust `LAContext` alive for as long as the query uses it: dropping it invalidates the context.
+
+```rust,no_run
+use localauthentication::prelude::*;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let presence = AccessControl::create(
+        AccessControlProtection::WhenUnlockedThisDeviceOnly,
+        AccessControlFlags::USER_PRESENCE,
+    )?;
+    let context = LAContext::new()?;
+    let evaluated = context.evaluate_access_control(
+        &presence,
+        LAAccessControlOperation::UseItem,
+        "unlock the saved token",
+    )?;
+    println!("evaluated: {evaluated}");
+    Ok(())
+}
+```
 
 ## Platform notes
 
@@ -28,7 +47,7 @@ The library is imported as `localauthentication`. The optional `async` feature a
 
 ## Timeouts, cancellation and dropping
 
-- The synchronous calls that wait for the framework (`LAContext::evaluate_policy`, `evaluate_access_control_raw`, `LARight` / `LAPersistedRight` authorization, the `LARightStore` operations, and the key and secret operations) wait at most `sync_timeout()`, 30 seconds by default. Change it for the whole process with `set_sync_timeout(Some(duration))`, or pass `None` to wait indefinitely. The async API never times out.
+- The synchronous calls that wait for the framework (`LAContext::evaluate_policy`, `evaluate_access_control`, `LARight` / `LAPersistedRight` authorization, the `LARightStore` operations, and the key and secret operations) wait at most `sync_timeout()`, 30 seconds by default. Change it for the whole process with `set_sync_timeout(Some(duration))`, or pass `None` to wait indefinitely. The async API never times out.
 - A timed-out call returns `LAError::TimedOut` and is cancelled: an evaluation invalidates its `LAContext` (which dismisses the prompt), an authorization that completes later is deauthorized again, and a right that is saved after the timeout is removed again. Removals cannot be undone and may still complete after a timeout.
 - Dropping an `LAContext` invalidates it, so a prompt that is still on screen is dismissed and any pending evaluation (including an async one) fails with `LAError::AppCancel`.
 
@@ -62,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Highlights
 
-- `LAContext` lifecycle, policy preflight/evaluation, credential injection, domain-state snapshots, and raw access-control evaluation
+- `LAContext` lifecycle, policy preflight/evaluation, credential injection, domain-state snapshots, and access-control evaluation with `security-rs`'s `AccessControl` (re-exported with `AccessControlFlags` and `AccessControlProtection`)
 - `LAPolicy`, `LAError`, `LA_ERROR_DOMAIN`, `BiometryType`, and `LACompanionType`
 - `LAAuthenticationRequirement` and `LABiometryFallbackRequirement` builders for rights
 - `LARight` and `LARightStore` for in-memory and persisted authorization flows

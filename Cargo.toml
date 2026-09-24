@@ -44,6 +44,7 @@ async = []
 [dependencies]
 libc = "0.2"
 doom-fish-utils = { path = "../doom-fish-utils", version = ">=0.4.1, <0.5" }
+security-rs = { path = "../security-rs", version = ">=0.6, <0.7" }
 zeroize = ">=1.6, <1.9"
 
 [dev-dependencies]

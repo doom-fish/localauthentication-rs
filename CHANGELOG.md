@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LASecret::load_data`, `LAPrivateKey::decrypt` and
   `LAPrivateKey::exchange_keys_with_public_key` return `Zeroizing<Vec<u8>>`,
   and the bridge wipes its copy before freeing it.
+- Access-control evaluation no longer takes a raw pointer that the bridge
+  bit-cast to `SecAccessControl`. It takes `security-rs`'s `AccessControl`,
+  and the bridge also checks the CF type of the object it receives.
 
 ### Fixed
 
@@ -49,8 +52,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LAPrivateKey::exchange_keys_with_public_key` return `Zeroizing<Vec<u8>>`.
 - **Breaking:** `LACredential` no longer implements a field-wise `Debug`;
   `PartialEq` compares the bytes in constant time.
-- **Breaking:** a timed-out `evaluate_policy` or `evaluate_access_control_raw`
+- **Breaking:** a timed-out `evaluate_policy` or `evaluate_access_control`
   invalidates the `LAContext`, and dropping an `LAContext` invalidates it.
+- **Breaking:** the `unsafe fn LAContext::evaluate_access_control_raw`, which
+  took a raw `SecAccessControlRef`, is replaced by the safe
+  `LAContext::evaluate_access_control(&AccessControl, operation, reason)`.
+  `AsyncContextExt::evaluate_access_control_async` is no longer `unsafe` and
+  takes `&AccessControl`. `AccessControl` is `security-rs`'s wrapper around a
+  real `SecAccessControlRef`; create one with `AccessControl::create`.
+- New dependency `security-rs` (`>=0.6, <0.7`), which provides `AccessControl`.
 - `doom-fish-utils` requirement is now `>=0.4.1, <0.5`; `rust-version` is now
   1.82.
 - New dependency `zeroize` (`>=1.6, <1.9`; 1.9 needs Rust 1.85).
@@ -61,6 +71,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   long the synchronous calls wait (default 30 s; `None` waits indefinitely).
 - `LAContext::as_raw_la_context()`, the borrowed Objective-C `LAContext`, for
   keychain queries that use `kSecUseAuthenticationContext`.
+- Root and prelude re-exports of `security-rs`'s `AccessControl`,
+  `AccessControlFlags` and `AccessControlProtection`.
+
+### Removed
+
+- **Breaking:** `LAContext::evaluate_access_control_raw`; use
+  `LAContext::evaluate_access_control`.
 
 ## [0.3.5] - 2026-06-06
 

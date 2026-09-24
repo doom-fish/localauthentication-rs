@@ -4,6 +4,8 @@ use core::ffi::c_void;
 use std::collections::BTreeMap;
 use std::ptr;
 
+use security::AccessControl;
+
 use crate::ffi;
 use crate::la_credential::{LACredential, LACredentialType};
 use crate::la_error::{from_status, LAError, Result};
@@ -69,7 +71,7 @@ impl LACompanionType {
     }
 }
 
-/// Access-control operations supported by `LAContext::evaluate_access_control_raw`.
+/// Access-control operations supported by `LAContext::evaluate_access_control`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum LAAccessControlOperation {
@@ -258,24 +260,15 @@ impl LAContext {
 
     /// Evaluate a `SecAccessControlRef` for the given operation.
     ///
-    /// # Safety
-    ///
-    /// `access_control` must be a valid borrowed `SecAccessControlRef` for the duration of the call.
-    ///
     /// # Errors
     ///
     /// Returns a mapped framework or bridge error when evaluation fails.
-    pub unsafe fn evaluate_access_control_raw(
+    pub fn evaluate_access_control(
         &self,
-        access_control: *const c_void,
+        access_control: &AccessControl,
         operation: LAAccessControlOperation,
         localized_reason: &str,
     ) -> Result<bool> {
-        if access_control.is_null() {
-            return Err(LAError::InvalidArgument(
-                "access control pointer must not be null".to_owned(),
-            ));
-        }
         if localized_reason.is_empty() {
             return Err(LAError::InvalidArgument(
                 "localized reason must not be empty".to_owned(),
@@ -283,10 +276,10 @@ impl LAContext {
         }
 
         let localized_reason = cstring(localized_reason)?;
-        bridge_bool(|out, error_out| {
+        bridge_bool(|out, error_out| unsafe {
             ffi::la_context::la_context_evaluate_access_control(
                 self.handle.as_ptr(),
-                access_control,
+                access_control.as_ptr().cast_const(),
                 operation.raw_value(),
                 localized_reason.as_ptr(),
                 out,
@@ -666,9 +659,9 @@ impl Drop for LAContext {
 mod tests {
     use core::ffi::{c_char, c_void};
     use std::ffi::CStr;
-    use std::ptr::NonNull;
+    use std::ptr::{self, NonNull};
 
-    use super::{LACompanionType, LAContext, Result};
+    use super::{LAAccessControlOperation, LACompanionType, LAContext, Result};
     use crate::ffi;
     use crate::private::OwnedHandle;
     use crate::{LACredential, LACredentialType, LAError, LAPolicy};
@@ -676,6 +669,12 @@ mod tests {
     unsafe extern "C" {
         fn objc_retain(object: *mut c_void) -> *mut c_void;
         fn object_getClassName(object: *mut c_void) -> *const c_char;
+    }
+
+    #[link(name = "CoreFoundation", kind = "framework")]
+    unsafe extern "C" {
+        fn CFDataCreate(allocator: *const c_void, bytes: *const u8, length: isize) -> *mut c_void;
+        fn CFRelease(cf: *const c_void);
     }
 
     #[test]
@@ -718,6 +717,35 @@ mod tests {
             "{error:?}"
         );
         assert!(right.check_can_authorize().is_ok() || right.state().is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn the_bridge_rejects_objects_that_are_not_access_controls() -> Result<()> {
+        let context = LAContext::new()?;
+        context.set_interaction_not_allowed(true)?;
+        let bytes = [0_u8; 4];
+        let data = unsafe { CFDataCreate(ptr::null(), bytes.as_ptr(), 4) };
+        assert!(!data.is_null());
+        let mut success = 0_u8;
+        let mut error = ptr::null_mut();
+        let status = unsafe {
+            ffi::la_context::la_context_evaluate_access_control(
+                context.handle.as_ptr(),
+                data.cast_const(),
+                LAAccessControlOperation::UseItem.raw_value(),
+                c"Authenticate".as_ptr(),
+                &raw mut success,
+                &raw mut error,
+            )
+        };
+        unsafe { CFRelease(data) };
+        let error = crate::la_error::from_status(status, error);
+        assert!(
+            matches!(&error, LAError::InvalidArgument(message) if message.contains("SecAccessControl")),
+            "{error:?}"
+        );
+        assert_eq!(success, 0);
         Ok(())
     }
 

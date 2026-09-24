@@ -20,7 +20,11 @@ func laAccessControl(_ ptr: UnsafeRawPointer?) throws -> SecAccessControl {
     guard let ptr else {
         throw LABridgeError.invalidArgument("access control pointer must not be null")
     }
-    return unsafeBitCast(ptr, to: SecAccessControl.self)
+    let object = Unmanaged<AnyObject>.fromOpaque(ptr).takeUnretainedValue()
+    guard CFGetTypeID(object) == SecAccessControlGetTypeID() else {
+        throw LABridgeError.invalidArgument("access control must be a SecAccessControl")
+    }
+    return unsafeDowncast(object, to: SecAccessControl.self)
 }
 
 @inline(__always)

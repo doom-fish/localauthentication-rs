@@ -14,36 +14,60 @@ fn test_evaluate_policy_empty_reason() {
     assert!(result.is_err());
 }
 
-#[test]
-fn test_evaluate_access_control_null_pointer() {
-    let context = LAContext::new().expect("Failed to create LAContext");
-
-    let result = unsafe {
-        context.evaluate_access_control_async(
-            std::ptr::null(),
-            LAAccessControlOperation::UseItem,
-            "Authenticate",
-        )
-    };
-
-    // Should reject null pointer
-    assert!(result.is_err());
+fn user_presence() -> AccessControl {
+    AccessControl::create(
+        AccessControlProtection::WhenUnlockedThisDeviceOnly,
+        AccessControlFlags::USER_PRESENCE,
+    )
+    .expect("create access control")
 }
 
 #[test]
 fn test_evaluate_access_control_empty_reason() {
     let context = LAContext::new().expect("Failed to create LAContext");
+    let access_control = user_presence();
 
-    let result = unsafe {
-        context.evaluate_access_control_async(
-            1 as *const std::ffi::c_void,
-            LAAccessControlOperation::UseItem,
-            "",
-        )
-    };
+    let result = context.evaluate_access_control_async(
+        &access_control,
+        LAAccessControlOperation::UseItem,
+        "",
+    );
 
     // Should reject empty reason
-    assert!(result.is_err());
+    assert!(matches!(result, Err(LAError::InvalidArgument(_))));
+}
+
+#[test]
+fn async_access_control_evaluation_matches_the_synchronous_error() {
+    let context = LAContext::new().expect("Failed to create LAContext");
+    context
+        .set_interaction_not_allowed(true)
+        .expect("disable interaction");
+    let access_control = user_presence();
+
+    let sync_error = context
+        .evaluate_access_control(
+            &access_control,
+            LAAccessControlOperation::UseItem,
+            "Authenticate",
+        )
+        .expect_err("user presence cannot be satisfied without interaction");
+    let pending = context
+        .evaluate_access_control_async(
+            &access_control,
+            LAAccessControlOperation::UseItem,
+            "Authenticate",
+        )
+        .expect("start evaluation");
+    drop(access_control);
+    let async_error = pollster::block_on(pending)
+        .expect_err("user presence cannot be satisfied without interaction");
+
+    assert!(
+        matches!(async_error, LAError::NotInteractive(_)),
+        "{async_error:?}"
+    );
+    assert_eq!(sync_error.code(), async_error.code());
 }
 
 #[test]

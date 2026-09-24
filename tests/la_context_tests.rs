@@ -32,3 +32,41 @@ fn la_context_round_trips_properties() -> Result<(), Box<dyn std::error::Error>>
 
     Ok(())
 }
+
+fn user_presence() -> Result<AccessControl, Box<dyn std::error::Error>> {
+    Ok(AccessControl::create(
+        AccessControlProtection::WhenUnlockedThisDeviceOnly,
+        AccessControlFlags::USER_PRESENCE,
+    )?)
+}
+
+#[test]
+fn access_control_evaluation_checks_the_reason_before_starting(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let context = LAContext::new()?;
+    let access_control = user_presence()?;
+    for reason in ["", "bad\0reason"] {
+        let error = context
+            .evaluate_access_control(&access_control, LAAccessControlOperation::UseItem, reason)
+            .expect_err("the reason is rejected before evaluation starts");
+        assert!(matches!(error, LAError::InvalidArgument(_)), "{error:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn non_interactive_access_control_evaluation_fails_without_a_prompt(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let context = LAContext::new()?;
+    context.set_interaction_not_allowed(true)?;
+    let access_control = user_presence()?;
+    let error = context
+        .evaluate_access_control(
+            &access_control,
+            LAAccessControlOperation::UseItem,
+            "Authenticate",
+        )
+        .expect_err("user presence cannot be satisfied without interaction");
+    assert!(matches!(error, LAError::NotInteractive(_)), "{error:?}");
+    Ok(())
+}
