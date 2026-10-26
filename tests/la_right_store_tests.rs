@@ -18,7 +18,7 @@ fn right_store_shared_and_save_path_are_reachable() -> Result<(), Box<dyn std::e
         }
         Err(error) => {
             assert_ne!(error.code(), 0);
-            assert!(!error.message().is_empty());
+            assert_ne!(error.message(), "");
         }
     }
 

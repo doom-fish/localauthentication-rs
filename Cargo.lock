@@ -11,7 +11,7 @@ dependencies = [
 
 [[package]]
 name = "apple-localauthentication"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "doom-fish-utils",
  "libc",
@@ -33,25 +33,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
-name = "crossbeam-queue"
-version = "0.3.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f58bbc28f91df819d0aa2a2c00cd19754769c2fad90579b3592b1c9ba7a3115"
-dependencies = [
- "crossbeam-utils",
-]
-
-[[package]]
-name = "crossbeam-utils"
-version = "0.8.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
-
-[[package]]
 name = "doom-fish-utils"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
- "crossbeam-queue",
  "futures-util",
 ]
 

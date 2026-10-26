@@ -37,8 +37,8 @@ fn environment_state_and_observer_registration_are_reachable(
     let state = environment.state()?;
     for mechanism in state.all_mechanisms()? {
         let _ = mechanism.is_usable()?;
-        assert!(!mechanism.localized_name()?.is_empty());
-        assert!(!mechanism.icon_system_name()?.is_empty());
+        assert_ne!(mechanism.localized_name()?, "");
+        assert_ne!(mechanism.icon_system_name()?, "");
     }
 
     if let Some(biometry) = state.biometry()? {

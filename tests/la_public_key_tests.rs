@@ -22,7 +22,7 @@ fn public_key_operations_are_accessible_when_storage_succeeds(
     let sign = SecKeyAlgorithm::ecdsa_signature_message_x962_sha256();
     let encrypt = SecKeyAlgorithm::ecies_encryption_cofactor_variable_iv_x963_sha256_aes_gcm();
 
-    assert!(!public_key.export_bytes()?.is_empty());
+    assert_ne!(public_key.export_bytes()?, [] as [u8; 0]);
     let _ = public_key.can_verify_using(&sign)?;
     let _ = public_key.can_encrypt_using(&encrypt)?;
     let private_key = persisted.key()?;
