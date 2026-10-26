@@ -4,14 +4,14 @@ version = 3
 
 [[package]]
 name = "apple-cf"
-version = "0.11.0"
+version = "0.11.4"
 dependencies = [
  "doom-fish-utils",
 ]
 
 [[package]]
 name = "apple-localauthentication"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "doom-fish-utils",
  "libc",
@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "security-rs"
-version = "0.6.0"
+version = "0.6.2"
 dependencies = [
  "apple-cf",
  "base64",
