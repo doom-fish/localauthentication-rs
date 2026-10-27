@@ -6,7 +6,7 @@ Safe Rust bindings for Apple's [LocalAuthentication](https://developer.apple.com
 
 ```toml
 [dependencies]
-apple-localauthentication = "0.4"
+apple-localauthentication = "0.5"
 ```
 
 The library is imported as `localauthentication`. The optional `async` feature adds executor-agnostic futures for policy and access-control evaluation.

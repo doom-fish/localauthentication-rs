@@ -5,6 +5,15 @@ All notable changes to `apple-localauthentication` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-10-27
+
+### Changed
+
+- **Breaking:** require `security-rs` 0.8. The re-exported `AccessControl`, `AccessControlFlags` and
+  `AccessControlProtection` types now come from `security-rs` 0.8.
+- The dependency graph no longer contains `apple-cf`, `base64`, `bitflags` or a serialization crate through
+  `security-rs`.
+
 ## [0.4.2] - 2026-10-26
 
 ### Fixed
