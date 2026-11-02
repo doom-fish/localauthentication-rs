@@ -314,6 +314,26 @@ func laAwait<Value>(
     return try result.get()
 }
 
+func laAwaitCompletion<Value>(
+    _ start: (@escaping @Sendable (Value?, Error?) -> Void) -> Void
+) async throws -> Value {
+    try await withCheckedThrowingContinuation { continuation in
+        start { value, error in
+            if let error {
+                continuation.resume(throwing: error)
+            } else if let value {
+                continuation.resume(returning: value)
+            } else {
+                continuation.resume(
+                    throwing: LABridgeError.bridgeFailed(
+                        "LocalAuthentication returned neither a result nor an error"
+                    )
+                )
+            }
+        }
+    }
+}
+
 @_cdecl("la_bridge_probe_await")
 public func la_bridge_probe_await(
     _ delayMilliseconds: UInt32,

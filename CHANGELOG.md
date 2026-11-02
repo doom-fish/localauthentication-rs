@@ -5,6 +5,18 @@ All notable changes to `apple-localauthentication` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `LARightStore::right_for_identifier`, `LARightStore::save_right` and `LARightStore::save_right_with_secret` now
+  return an error when LocalAuthentication completes with neither a right nor an error. Before, the process stopped.
+  The Swift bridge now calls the completion-handler forms of these methods.
+- `LASecret::load_data`, `LAPrivateKey::sign`, `LAPrivateKey::decrypt`, `LAPrivateKey::exchange_keys_with_public_key`,
+  `LAPublicKey::export_bytes` and `LAPublicKey::encrypt` now return an error when LocalAuthentication completes with
+  neither data nor an error. Before, they returned empty bytes and no error. The Swift bridge now calls the
+  completion-handler forms of these methods.
+
 ## [0.5.0] - 2026-10-27
 
 ### Changed

@@ -33,7 +33,7 @@ public func la_public_key_export_bytes(
         if #available(macOS 13.0, *) {
             let key = try laPublicKey(keyPtr)
             let bytes = try laAwait {
-                try await key.bytes
+                try await laAwaitCompletion { key.exportBytes(completion: $0) }
             }
             return laCopyData(bytes, outBytes, outLen, errorOut)
         }
@@ -82,7 +82,7 @@ public func la_public_key_encrypt_data(
         if #available(macOS 13.0, *) {
             let key = try laPublicKey(keyPtr)
             let ciphertext = try laAwait {
-                try await key.encrypt(input, algorithm: algorithm)
+                try await laAwaitCompletion { key.encrypt(input, algorithm: algorithm, completion: $0) }
             }
             return laCopyData(ciphertext, outBytes, outLen, errorOut)
         }

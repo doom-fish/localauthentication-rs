@@ -53,7 +53,7 @@ public func la_right_store_right_for_identifier(
         if #available(macOS 13.0, *) {
             let store = try laRightStore(storePtr)
             let right = try laAwait {
-                try await store.right(forIdentifier: identifier)
+                try await laAwaitCompletion { store.right(forIdentifier: identifier, completion: $0) }
             }
             outRight.pointee = laRetainHandle(LAPersistedRightHandle(right))
             return LA_OK
@@ -83,7 +83,9 @@ public func la_right_store_save_right(
             let persisted = try laAwait(onLateSuccess: { persisted in
                 try? await store.removeRight(persisted)
             }) {
-                try await store.saveRight(right, identifier: identifier)
+                try await laAwaitCompletion {
+                    store.saveRight(right, identifier: identifier, completion: $0)
+                }
             }
             outRight.pointee = laRetainHandle(LAPersistedRightHandle(persisted))
             return LA_OK
@@ -116,7 +118,9 @@ public func la_right_store_save_right_with_secret(
             let persisted = try laAwait(onLateSuccess: { persisted in
                 try? await store.removeRight(persisted)
             }) {
-                try await store.saveRight(right, identifier: identifier, secret: secret)
+                try await laAwaitCompletion {
+                    store.saveRight(right, identifier: identifier, secret: secret, completion: $0)
+                }
             }
             outRight.pointee = laRetainHandle(LAPersistedRightHandle(persisted))
             return LA_OK

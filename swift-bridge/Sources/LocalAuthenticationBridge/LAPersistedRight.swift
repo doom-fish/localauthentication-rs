@@ -253,7 +253,7 @@ public func la_secret_load_data(
         if #available(macOS 13.0, *) {
             let secret = try laSecret(secretPtr)
             let data = try laAwait {
-                try await secret.rawData
+                try await laAwaitCompletion { secret.loadData(completion: $0) }
             }
             return laCopyData(data, outBytes, outLen, errorOut)
         }
@@ -328,7 +328,7 @@ public func la_private_key_sign_data(
         if #available(macOS 13.0, *) {
             let key = try laPrivateKey(keyPtr)
             let signature = try laAwait {
-                try await key.sign(input, algorithm: algorithm)
+                try await laAwaitCompletion { key.sign(input, algorithm: algorithm, completion: $0) }
             }
             return laCopyData(signature, outBytes, outLen, errorOut)
         }
@@ -377,7 +377,7 @@ public func la_private_key_decrypt_data(
         if #available(macOS 13.0, *) {
             let key = try laPrivateKey(keyPtr)
             let plaintext = try laAwait {
-                try await key.decrypt(input, algorithm: algorithm)
+                try await laAwaitCompletion { key.decrypt(input, algorithm: algorithm, completion: $0) }
             }
             return laCopyData(plaintext, outBytes, outLen, errorOut)
         }
@@ -436,11 +436,14 @@ public func la_private_key_exchange_keys_with_public_key(
                 hasSharedInfo: hasSharedInfo
             )
             let sharedSecret = try laAwait {
-                try await key.exchangeKeys(
-                    publicKey: publicKey,
-                    algorithm: algorithm,
-                    parameters: parameters
-                )
+                try await laAwaitCompletion {
+                    key.exchangeKeys(
+                        publicKey: publicKey,
+                        algorithm: algorithm,
+                        parameters: parameters,
+                        completion: $0
+                    )
+                }
             }
             return laCopyData(sharedSecret, outBytes, outLen, errorOut)
         }
