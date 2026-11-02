@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-02
+
 ### Fixed
 
 - `LARightStore::right_for_identifier`, `LARightStore::save_right` and `LARightStore::save_right_with_secret` now
